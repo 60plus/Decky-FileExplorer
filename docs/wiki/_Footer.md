@@ -1,0 +1,1 @@
+FileExplorer · by **60plus** · [Manual home](Home.md) · [Latest release](https://github.com/60plus/Decky-FileExplorer/releases/latest) · [Report a problem](https://github.com/60plus/Decky-FileExplorer/issues)

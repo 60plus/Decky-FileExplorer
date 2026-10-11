@@ -1,0 +1,9 @@
+node_modules/
+dist/
+out/
+.reference-template/
+.work/
+__pycache__/
+*.pyc
+vendor/
+.venv/

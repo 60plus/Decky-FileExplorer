@@ -1,0 +1,28 @@
+import { CSSProperties, RefObject, useEffect, useLayoutEffect, useState } from 'react';
+import { api, Settings, State } from './api';
+
+export const accents = { cyan: '#69dce3', blue: '#83baff', green: '#8ee3ad', amber: '#f6ce72', violet: '#b9a2ff', rose: '#ffa2bb' };
+export const defaultAppearance = { accent: 'cyan', opacity: 100, text_size: 14 };
+
+export function appearanceStyle(settings?: Partial<Settings>): CSSProperties {
+  const color = accents[settings?.accent as keyof typeof accents] || accents.cyan;
+  const opacity = [70, 85, 100].includes(settings?.opacity || 0) ? settings!.opacity! / 100 : 1;
+  const size = [12, 14, 16, 18].includes(settings?.text_size || 0) ? settings!.text_size : 14;
+  return { '--fe-accent': color, '--fe-highlight': color + '30', '--fe-background': `rgba(16,28,44,${opacity})`,
+    '--fe-pane-background': `rgba(21,34,54,${opacity})`, '--fe-code-background': `rgba(13,23,35,${opacity})`,
+    '--fe-text-size': size + 'px', '--fe-line-height': (size! * 2) + 'px' } as CSSProperties;
+}
+
+export function useAppearance() {
+  const [settings, setSettings] = useState<Partial<Settings>>(defaultAppearance);
+  useEffect(() => { let live = true; void api<State>('state').then(s => { if (live) setSettings(s.settings); }).catch(() => {}); return () => { live = false; }; }, []);
+  return appearanceStyle(settings);
+}
+
+// ModalRoot forwards style to its inner form, not its outer surface.
+export function useModalStyle(root: RefObject<HTMLElement>, style: CSSProperties) {
+  useLayoutEffect(() => {
+    const modal = root.current?.closest<HTMLElement>('.fe-modal');
+    if (modal) for (const [key, value] of Object.entries(style)) modal.style.setProperty(key, String(value));
+  }, [root, style]);
+}

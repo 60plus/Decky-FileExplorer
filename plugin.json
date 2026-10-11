@@ -1,0 +1,7 @@
+{
+  "name": "FileExplorer",
+  "author": "60plus",
+  "flags": [],
+  "api_version": 1,
+  "publish": {"description": "A simple two-pane file manager with gamepad controls, archives and SMB shares.", "tags": ["files", "storage", "network"]}
+}

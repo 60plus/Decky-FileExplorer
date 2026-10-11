@@ -1,0 +1,25 @@
+{
+  "name": "decky-fileexplorer",
+  "version": "0.6.1",
+  "description": "Two panels. One controller. A file manager for Decky Loader.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "build": "rollup -c",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@decky/api": "1.1.2",
+    "@decky/ui": "4.10.4"
+  },
+  "devDependencies": {
+    "@decky/rollup": "1.0.2",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "typescript": "5.9.3"
+  },
+  "peerDependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  }
+}
