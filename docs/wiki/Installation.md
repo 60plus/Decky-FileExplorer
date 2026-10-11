@@ -67,6 +67,10 @@ Each panel has its own location. Follow [Everyday use](Daily-Use.md) for the con
 3. Wait for download verification, then confirm **Install** in Decky's prompt.
 4. Reopen FileExplorer's Update or About page to check the installed version.
 
+![Installed and available versions in the GitHub update page](../../images/screenshots/15-github-update-f2b9d6244506.png)
+
+![Decky's confirmation after the plugin ZIP passes verification](../../images/screenshots/16-verified-install-8c70d74d0335.png)
+
 FileExplorer checks GitHub when Decky starts and reports a newer stable release
 at most once per OS boot. Reloading Steam or the plugin does not repeat the notice.
 Turn off **Settings → Check for updates at startup** to disable automatic checks

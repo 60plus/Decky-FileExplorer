@@ -140,6 +140,20 @@ Decky also accepts a direct plugin ZIP link under **Install Plugin from URL**.
 See the [illustrated installation guide](https://github.com/60plus/Decky-FileExplorer/wiki/Installation)
 for both methods and the Developer-mode screenshots.
 
+## Update
+
+Open **FileExplorer → Update → Check for updates**, then choose **Download and install**.
+The plugin verifies the GitHub ZIP before opening Decky's installation prompt.
+Confirm **Install** there. Settings, saved connections and running transfers are preserved.
+
+| Check the latest GitHub release | Control startup notifications |
+| --- | --- |
+| [![Available GitHub update with installed version and release notes](images/screenshots/15-github-update-f2b9d6244506.png)](images/screenshots/15-github-update-f2b9d6244506.png) | [![Startup update check switch in Settings](images/screenshots/17-update-settings-2a1f8b6dd8a6.png)](images/screenshots/17-update-settings-2a1f8b6dd8a6.png) |
+| Read the release notes, download and confirm in Decky. | Notify once per OS boot; manual checks work with this option off. |
+
+See the [update guide](https://github.com/60plus/Decky-FileExplorer/wiki/Installation#update-an-existing-installation)
+for the complete workflow.
+
 ## File handling
 
 FileExplorer runs as the Steam user, without root privileges.

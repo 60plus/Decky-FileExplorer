@@ -7,6 +7,20 @@ Controller glyphs are supplied by Steam.
 
 [Back to the README](../README.md)
 
+## Update from GitHub
+
+Check the latest stable release, read the release notes and download the update.
+The ZIP is verified before Decky opens its installation prompt.
+
+![Installed and available versions with a verified download option](../images/screenshots/15-github-update-f2b9d6244506.png)
+
+![Decky asks for confirmation before replacing the installed plugin](../images/screenshots/16-verified-install-8c70d74d0335.png)
+
+Startup checks can notify once per OS boot. The Settings switch disables automatic
+checks and notifications while keeping manual updates available.
+
+![Startup update preference in the Decky sidebar](../images/screenshots/17-update-settings-2a1f8b6dd8a6.png)
+
 ## Two folders, one controller
 
 Keep the source and destination side by side. Select multiple files or folders with **X**,
