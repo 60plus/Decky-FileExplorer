@@ -148,7 +148,7 @@ Confirm **Install** there. Settings, saved connections and running transfers are
 
 | Check the latest GitHub release | Control startup notifications |
 | --- | --- |
-| [![Available GitHub update with installed version and release notes](images/screenshots/15-github-update-f2b9d6244506.png)](images/screenshots/15-github-update-f2b9d6244506.png) | [![Startup update check switch in Settings](images/screenshots/17-update-settings-2a1f8b6dd8a6.png)](images/screenshots/17-update-settings-2a1f8b6dd8a6.png) |
+| [![Available GitHub update with installed version and release notes](images/screenshots/15-github-update-f2b9d6244506.png)](images/screenshots/15-github-update-f2b9d6244506.png) | [![Startup update check switch in Settings](images/screenshots/17-update-settings-d7a4e8f08237.png)](images/screenshots/17-update-settings-d7a4e8f08237.png) |
 | Read the release notes, download and confirm in Decky. | Notify once per OS boot; manual checks work with this option off. |
 
 See the [update guide](https://github.com/60plus/Decky-FileExplorer/wiki/Installation#update-an-existing-installation)

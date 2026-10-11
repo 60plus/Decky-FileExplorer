@@ -19,7 +19,7 @@ The ZIP is verified before Decky opens its installation prompt.
 Startup checks can notify once per OS boot. The Settings switch disables automatic
 checks and notifications while keeping manual updates available.
 
-![Startup update preference in the Decky sidebar](../images/screenshots/17-update-settings-2a1f8b6dd8a6.png)
+![Startup update preference in the Decky sidebar](../images/screenshots/17-update-settings-d7a4e8f08237.png)
 
 ## Two folders, one controller
 
