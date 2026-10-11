@@ -2,7 +2,7 @@
 
 ![FileExplorer: Two panels. One controller.](images/cover.png)
 
-A simple, controller-friendly file manager for **SteamOS and Decky Loader**, by **60plus**.
+A simple, controller-friendly file manager for **SteamOS and Decky Loader**.
 Open two folders side by side, select your files and copy them across.
 
 [User manual](https://github.com/60plus/Decky-FileExplorer/wiki) ·
