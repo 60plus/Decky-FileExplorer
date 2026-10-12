@@ -7,7 +7,7 @@ FileExplorer opens two folders side by side, with controller controls for copyin
 archive browsing, text editing, image previews and network shares.
 
 This manual describes **FileExplorer**. The screenshots were captured from the
-installed plugin on a SteamOS PC, using demonstration files and real LAN discovery
+installed plugin on a SteamOS PC and ROG Ally handheld, using demonstration files and real LAN discovery
 results. Steam supplies the button glyphs for the active controller.
 
 ## Choose a guide
@@ -20,6 +20,7 @@ results. Steam supplies the button glyphs for the active controller.
 | Open an archive and extract only what I need | [Archives](Archives.md) |
 | Edit TXT, CFG, JSON or other small text files | [Text editor](Text-Editor.md) |
 | View pictures and switch between them with the controller | [Image viewer](Image-Viewer.md) |
+| See the handheld layout and make room for more text | [Handheld screenshots and scaling](Handheld-Gallery.md) |
 | Find a NAS, connect to SMB or open a mounted share | [Network shares](Network-Shares.md) |
 | Show hidden files, change sorting or empty Trash | [Settings and Trash](Settings-and-Trash.md) |
 | Understand the implementation | [How it works](How-It-Works.md) |
@@ -41,12 +42,14 @@ the notifications report **25%, 50%, 75% and completion**.
 ## What this version includes
 
 The compact Decky sidebar contains **Launch FileExplorer**, **Settings**, **Update**
-and **About**. The file manager opens in a large central window; the other pages
-stay in the sidebar. About shows the version, plugin icon and 60plus logo.
+and **About**. The file manager fills the available space on handhelds and smaller
+screens, and uses a centered window on large displays. The other pages stay in
+the sidebar. About shows the version, plugin icon and 60plus logo.
 
-Updates currently use the plugin ZIP from
-[latest release](https://github.com/60plus/Decky-FileExplorer/releases/latest).
-The **Update** page explains this; automatic GitHub updates are not enabled yet.
+The **Update** page checks the
+[latest release](https://github.com/60plus/Decky-FileExplorer/releases/latest),
+verifies the download and opens Decky's installation prompt. Startup checks notify
+once per OS boot when an update is available and can be disabled in Settings.
 
 The recorded test environment is **SteamOS 3.8.28 with Decky Loader 3.2.10 on an
 x86-64 PC**. See the [verification notes](../TESTING.md) for the checks and their

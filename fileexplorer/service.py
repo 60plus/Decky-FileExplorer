@@ -19,7 +19,7 @@ from .updates import installed_version
 from .vfs import VFS, join, parent, split, validate_name
 
 DEFAULTS = dict(show_hidden=False, folders_first=True, sort_by='name', remember_paths=True,
-                left='', right='', extraction_limit_gib=100, accent='cyan', opacity=100, text_size=14, check_updates_on_start=True)
+                left='', right='', extraction_limit_gib=100, accent='cyan', opacity=100, text_size=14, ui_scale=100, check_updates_on_start=True)
 
 
 class Cancelled(Exception):
@@ -88,10 +88,12 @@ class Service:
                     self.config['settings'][key] = value
                 elif key == 'text_size' and type(value) is int and value in (12, 14, 16, 18):
                     self.config['settings'][key] = value
+                elif key == 'ui_scale' and type(value) is int and value in (70, 80, 90, 100):
+                    self.config['settings'][key] = value
                 elif key in ('left', 'right'):
                     archive.parse(value) if archive.is_location(value) else split(value)
                     self.config['settings'][key] = value
-                elif key == 'extraction_limit_gib' and type(value) is int and 1 <= value <= 1000:
+                elif key == 'extraction_limit_gib' and type(value) is int and 0 <= value <= 1000:
                     self.config['settings'][key] = value
                 else: raise ValueError('Invalid setting: ' + str(key))
             self.save()
@@ -134,8 +136,13 @@ class Service:
             raise ValueError('Copy this nested archive to a folder first, then open it.')
         return dict(path=archive.location(location))
 
+    def extraction_limit(self):
+        gib = self.config['settings']['extraction_limit_gib']
+        return gib * 1024**3 if gib else None
+
     @contextmanager
     def _archive_file(self, fs, source, progress=lambda *_: None):
+        limit = self.extraction_limit()
         info = fs.info(source)
         if info['directory'] or info['link'] or not info.get('regular', True):
             raise ValueError('Open a regular archive file')
@@ -151,7 +158,7 @@ class Service:
             def bounded(n, name):
                 nonlocal received
                 received += n
-                if received > self.config['settings']['extraction_limit_gib'] * 1024**3: raise ValueError('Remote archive exceeds the size limit')
+                if limit is not None and received > limit: raise archive.size_limit_error(limit, remote=True)
                 self.staging_progress(n, name)
             with local.open('xb') as out: fs.read_to(source, out, bounded)
             self._archive_work_files[source] = local
@@ -163,8 +170,8 @@ class Service:
             def bounded(n, name):
                 nonlocal received
                 received += n
-                if received > self.config['settings']['extraction_limit_gib'] * 1024**3:
-                    raise ValueError('Remote archive exceeds the size limit')
+                if limit is not None and received > limit:
+                    raise archive.size_limit_error(limit, remote=True)
                 progress(n, name)
             with local.open('xb') as out: fs.read_to(source, out, bounded)
             yield local
@@ -470,7 +477,7 @@ class Service:
         stage = tempfile.mkdtemp(prefix='.fileexplorer-extract-', dir=destination)
         try:
             with self._archive_file(fs, source, self.staging_progress) as local:
-                archive.extract(local, stage, self.progress, self.config['settings']['extraction_limit_gib'] * 1024**3)
+                archive.extract(local, stage, self.progress, self.extraction_limit())
             self.progress(0, source)
             fs.rename(stage, target)
             return target
@@ -488,7 +495,7 @@ class Service:
             if fs.exists(join(destination, name)): raise FileExistsError(name + ' already exists in the other panel. Rename it first.')
         with tempfile.TemporaryDirectory(prefix='selected-', dir=self._archive_scratch) as stage:
             with self._archive_file(fs, source, self.staging_progress) as local:
-                archive.extract(local, stage, self.staging_progress, self.config['settings']['extraction_limit_gib'] * 1024**3, selected=members)
+                archive.extract(local, stage, self.staging_progress, self.extraction_limit(), selected=members)
             for member in members:
                 out = self._copy(fs, str(Path(stage) / member), destination)
                 with self.lock:

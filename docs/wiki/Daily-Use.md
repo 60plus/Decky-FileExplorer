@@ -8,6 +8,11 @@ The active panel is the source for file actions. The other panel is the destinat
 for copying or extraction. Both panels show their path, file list and selection
 count; local folders also show free space.
 
+On handhelds and smaller screens, FileExplorer fills the available space between
+Steam's header and controller controls. Compact toolbars leave more room for files
+while keeping your selected text size. Large displays retain the centered window.
+The text editor and image viewer adapt to the same available space.
+
 ![Source and destination side by side](../../images/screenshots/01-two-panels-c446ee4897f4.png)
 
 Open a folder with **A**. The **..** row and **B** go to its parent. At the

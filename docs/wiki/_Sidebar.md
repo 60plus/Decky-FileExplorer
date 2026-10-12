@@ -7,6 +7,7 @@
 - [Archives](Archives.md)
 - [Text editor](Text-Editor.md)
 - [Image viewer](Image-Viewer.md)
+- [Handheld screenshots and scaling](Handheld-Gallery.md)
 - [Network shares](Network-Shares.md)
 - [Settings and Trash](Settings-and-Trash.md)
 - [How it works](How-It-Works.md)

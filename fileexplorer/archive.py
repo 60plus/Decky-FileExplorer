@@ -51,6 +51,12 @@ def safe_member(name: str) -> Path:
     return Path(*p.parts)
 
 
+def size_limit_error(limit, remote=False):
+    subject = 'Remote archive' if remote else 'Archive'
+    return ValueError(f'{subject} exceeds extraction size limit ({limit / 1024**3:g} GiB). '
+                      'Increase Extraction limit in Settings or choose Unlimited.')
+
+
 def _walk(source, destination=None, progress=lambda *_: None, limit=100 * 1024**3, selected=None):
     lib = C.CDLL(ctypes.util.find_library('archive') or 'libarchive.so.13')
     def bind(name, restype, *args):
@@ -115,7 +121,7 @@ def _walk(source, destination=None, progress=lambda *_: None, limit=100 * 1024**
             if kind(entry) == 0o040000:
                 target.mkdir(parents=True, exist_ok=True)
                 continue
-            if size(entry) > limit - total: raise ValueError('Archive exceeds extraction size limit')
+            if limit is not None and size(entry) > limit - total: raise size_limit_error(limit)
             target.parent.mkdir(parents=True, exist_ok=True)
             with target.open('xb') as output:
                 while True:
@@ -124,7 +130,7 @@ def _walk(source, destination=None, progress=lambda *_: None, limit=100 * 1024**
                     check(n)
                     if not n: break
                     total += n
-                    if total > limit: raise ValueError('Archive exceeds extraction size limit')
+                    if limit is not None and total > limit: raise size_limit_error(limit)
                     output.write(buffer.raw[:n])
                     progress(n, name)
         return entries if destination is None else count

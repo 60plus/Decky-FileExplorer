@@ -62,6 +62,8 @@ Each panel has its own location. Follow [Everyday use](Daily-Use.md) for the con
 
 ## Update an existing installation
 
+Updates contain the complete plugin. You can skip intermediate releases.
+
 1. Open **FileExplorer → Update → Check for updates**.
 2. Read the available version and release notes, then select **Download and install**.
 3. Wait for download verification, then confirm **Install** in Decky's prompt.
@@ -73,7 +75,7 @@ Each panel has its own location. Follow [Everyday use](Daily-Use.md) for the con
 
 FileExplorer checks GitHub when Decky starts and reports a newer stable release
 at most once per OS boot. Reloading Steam or the plugin does not repeat the notice.
-Turn off **Settings → Check for updates at startup** to disable automatic checks
+Turn off **Settings → Startup update check** to disable automatic checks
 and notifications. Manual checks remain available. An offline startup retries
 quietly every five minutes until a check succeeds; installation always requires your action.
 

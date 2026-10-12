@@ -31,13 +31,13 @@ class BackendTests(unittest.TestCase):
         self.temp.cleanup()
 
     def test_appearance_persists_and_rejects_invalid_values(self):
-        desired = dict(accent='violet', opacity=85, text_size=18)
+        desired = dict(accent='violet', opacity=85, text_size=18, ui_scale=80)
         self.service.update_settings(desired)
         other = Service(self.home, self.root / 'settings')
         try:
             for key, value in desired.items(): self.assertEqual(other.state()['settings'][key], value)
         finally: other.shutdown()
-        for key, value in [('accent', 'red;'), ('opacity', 0), ('opacity', True), ('text_size', 200), ('text_size', '18')]:
+        for key, value in [('accent', 'red;'), ('opacity', 0), ('opacity', True), ('text_size', 200), ('text_size', '18'), ('ui_scale', 0), ('ui_scale', True), ('ui_scale', '80'), ('ui_scale', 120)]:
             with self.assertRaises(ValueError): self.service.update_settings({key: value})
             self.assertEqual(self.service.state()['settings'][key], desired[key])
 
@@ -148,6 +148,54 @@ class BackendTests(unittest.TestCase):
         z = self.left / 'limit.zip'
         with zipfile.ZipFile(z, 'w') as f: f.writestr('file.txt', 'x' * 1024)
         with self.assertRaises(ValueError): extract(z, self.right, lambda *_: None, limit=512)
+
+    def test_unlimited_extraction_setting_persists_and_validates(self):
+        self.service.update_settings({'extraction_limit_gib': 0})
+        other = Service(self.home, self.root / 'settings')
+        try:
+            self.assertEqual(other.state()['settings']['extraction_limit_gib'], 0)
+            self.assertIsNone(other.extraction_limit())
+        finally: other.shutdown()
+        for invalid in (-1, True, '0', 1001):
+            with self.assertRaises(ValueError): self.service.update_settings({'extraction_limit_gib': invalid})
+        self.service.update_settings({'extraction_limit_gib': 10})
+        self.assertEqual(self.service.extraction_limit(), 10 * 1024**3)
+
+    def test_remote_archive_limit_and_unlimited_in_both_download_paths(self):
+        class Download:
+            def info(self, _): return dict(directory=False, link=False, regular=True)
+            def read_to(self, source, output, progress):
+                output.write(b'test archive')
+                # Simulate the transfer counter without allocating 2 GiB.
+                progress(2 * 1024**3, source)
+        self.service.staging_progress = lambda *_: None
+        scratch = self.root / 'scratch'; scratch.mkdir()
+        self.service._archive_scratch = str(scratch)
+        source = 'smb://test/archive.zip'
+        for worker_path in (False, True):
+            self.service._archive_work_files = {} if worker_path else None
+            self.service.update_settings({'extraction_limit_gib': 1})
+            with self.assertRaisesRegex(ValueError, r'size limit \(1 GiB\).*Settings.*Unlimited'):
+                with self.service._archive_file(Download(), source): pass
+            self.service.update_settings({'extraction_limit_gib': 0})
+            with self.service._archive_file(Download(), source) as downloaded:
+                self.assertEqual(Path(downloaded).read_bytes(), b'test archive')
+
+    @unittest.skipUnless(os.name == 'posix', 'System libarchive required')
+    def test_unlimited_whole_and_selected_extraction_keeps_path_checks(self):
+        self.service.update_settings({'extraction_limit_gib': 0})
+        z = self.left / 'unlimited.zip'
+        with zipfile.ZipFile(z, 'w') as f: f.writestr('folder/file.txt', 'payload' * 1024)
+        state = self.job('extract', [z], self.right)
+        self.assertEqual(state['status'], 'done', state)
+        selected = self.right / 'selected'; selected.mkdir()
+        state = self.job('copy', [archive.location(str(z), 'folder')], selected)
+        self.assertEqual(state['status'], 'done', state)
+        self.assertEqual((selected / 'folder/file.txt').read_bytes(), (self.right / 'unlimited/folder/file.txt').read_bytes())
+        bad = self.left / 'unsafe.zip'
+        with zipfile.ZipFile(bad, 'w') as f: f.writestr('../outside.txt', 'bad')
+        self.assertEqual(self.job('extract', [bad], self.right)['status'], 'error')
+        self.assertFalse((self.right / 'outside.txt').exists())
 
     def test_cancel_preserves_original_and_removes_partial(self):
         source = self.left / 'large'; source.write_bytes(b'x' * 4_000_000)

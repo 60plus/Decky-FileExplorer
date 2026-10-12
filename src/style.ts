@@ -1,7 +1,11 @@
 export const css = `
-.fe-modal { width:min(1120px,94vw)!important; max-width:94vw!important; padding:0!important; background:#101c2c!important; border-radius:14px!important; overflow:hidden!important; }
+.fe-modal { width:min(1120px,94vw)!important; max-width:94vw!important; height:min(724px,calc(100vh - 108px))!important; max-height:100%!important; padding:0!important; background:#101c2c!important; border-radius:14px!important; overflow:hidden!important; }
 .fe-modal .DialogContent_InnerWidth { width:100%!important; max-width:none!important; }
-.fe-app { height:min(720px,calc(100vh - 112px)); min-height:350px; display:flex; flex-direction:column; color:#edf4fc; font-family:inherit; }
+.fe-modal .DialogContent_InnerWidth,.fe-modal form { height:100%!important; min-height:0!important; }
+/* Steam positions its controller focus ring outside this subtree using DOM
+   bounds. Its CEF reports incorrect bounds for CSS zoom, while transforms keep
+   the ring aligned. Expand the layout before scaling so the window stays full. */
+.fe-app { transform:scale(var(--fe-scale,1)); transform-origin:top left; width:calc(100% / var(--fe-scale,1)); height:calc(100% / var(--fe-scale,1)); min-height:0; flex-shrink:0; display:flex; flex-direction:column; color:#edf4fc; font-family:inherit; }
 .fe-header { display:flex; align-items:center; gap:12px; padding:15px 20px 12px; flex-shrink:0; border-bottom:1px solid #2b3d51; }
 .fe-brand { display:flex; align-items:center; gap:10px; font-size:24px; font-weight:700; flex:1; }
 .fe-subtitle { font-size:12px; color:#90a7bd; font-weight:400; margin-top:3px; }
@@ -30,6 +34,7 @@ export const css = `
 .fe-status { display:flex; align-items:center; gap:12px; padding:10px 18px; font-size:12px; min-height:22px; color:#a4bdd0; }
 .fe-status .fe-btn { min-width:75px!important; width:auto!important; font-size:12px!important; padding:4px 10px!important; }
 .fe-status-text { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.fe-status-error { color:#ffb29f; white-space:normal; overflow:visible; overflow-wrap:anywhere; line-height:1.45; }
 .fe-error { color:#ffb29f; white-space:normal; font-size:13px; padding:12px; }
 .fe-muted { color:#8fa6bd; padding:16px 10px; font-size:13px; }
 .fe-legend { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px 16px; padding:9px 14px 11px; background:#0c1725; border-top:1px solid #293b4e; font-size:11px; color:#a7bdce; }
@@ -46,6 +51,17 @@ export const css = `
 .fe-places { max-height:46vh; overflow:auto; }
 .fe-dialog > .fe-connection-form { max-height:40vh; overflow:auto; }
 .fe-panel-stack { display:flex; flex-direction:column; gap:10px; }
+.fe-settings { display:flex; flex-direction:column; gap:8px; }
+.fe-setting-row { display:flex; align-items:center; }
+.fe-setting-control { flex:1; min-width:0; }
+.fe-setting-control [role="slider"] { width:100%!important; min-width:0!important; box-sizing:border-box; }
+.fe-setting-control :has([role="slider"]) { min-width:0!important; }
+.fe-setting-help { padding:8px 0 12px; font-size:12px; line-height:1.5; color:#b6c7d7; overflow-wrap:anywhere; }
+.fe-slider-label { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.fe-slider-label b { font-size:12px; font-weight:400; white-space:nowrap; color:#c7d9ea; }
+.fe-settings-actions { display:flex; flex-direction:column; gap:14px; margin:8px 0; }
+.fe-settings-connections { display:flex; flex-direction:column; gap:12px; margin-top:8px; padding-top:16px; border-top:1px solid #3b4957; }
+.fe-saved-profiles { display:flex; flex-direction:column; gap:12px; }
 .fe-danger { display:flex; align-items:center; gap:12px; border:1px solid #ee6666; border-radius:8px; background:#541c25; padding:14px; color:#ffd3d3; }
 .fe-danger>span { display:flex; align-items:center; justify-content:center; border-radius:50%; background:#d83246; color:white; width:32px; height:32px; flex-shrink:0; font-size:25px; font-weight:bold; }
 .fe-progress { position:relative; background:#20384a; margin:0 18px 9px; min-height:20px; border-radius:4px; overflow:hidden; flex-shrink:0; }
@@ -57,7 +73,6 @@ export const css = `
 .fe-line-number { position:sticky; left:0; background:#132437; color:#8aa6bb; width:56px; text-align:right; padding:0 12px 0 4px; box-sizing:border-box; flex-shrink:0; }
 .fe-code-line code { padding:0 10px; tab-size:4; }
 .fe-encoding { padding:8px 18px; }
-@media(max-height:600px) { .fe-header {padding:10px 16px;} .fe-brand{font-size:20px;} .fe-subtitle{display:none;} .fe-toolbar{padding:8px 16px;} .fe-row{min-height:31px;font-size:13px;} .fe-app{height:calc(100vh - 85px);min-height:320px;} }
 .fe-modal { background:var(--fe-background,#101c2c)!important; }
 .fe-pane { background:var(--fe-pane-background,#152236); }
 .fe-pane.active { border-color:var(--fe-accent,#69dce3); box-shadow:0 0 0 1px var(--fe-accent,#69dce3); }
@@ -80,8 +95,10 @@ export const css = `
 .fe-editor .fe-error { max-height:50px; overflow:auto; flex-shrink:0; }
 .fe-editor .fe-toolbar { gap:6px; }
 .fe-editor .fe-toolbar .fe-btn { padding:7px 4px!important; font-size:12px!important; }
+.fe-editor-title { flex:1; min-width:0; }
+.fe-toolbar-toggle { width:auto!important; min-width:0!important; min-height:28px!important; padding:4px 8px!important; font-size:12px!important; line-height:20px!important; flex-shrink:0; }
 .fe-editor-modal.fe-keyboard-visible { position:fixed!important; left:50%!important; top:var(--fe-editor-top)!important; transform:translateX(-50%)!important; margin:0!important; height:var(--fe-editor-height)!important; max-height:var(--fe-editor-height)!important; }
-.fe-keyboard-visible .fe-editor { height:100%!important; min-height:0!important; }
+.fe-keyboard-visible .fe-editor { height:calc(100% / var(--fe-scale,1))!important; min-height:0!important; }
 .fe-keyboard-visible .DialogContent_InnerWidth,.fe-keyboard-visible form { height:100%!important; min-height:0!important; }
 .fe-keyboard-visible .fe-header { padding:8px 18px; }
 .fe-keyboard-visible .fe-toolbar { padding:6px 18px; }
@@ -97,4 +114,43 @@ export const css = `
 .fe-image-stage { flex:1; min-height:0; margin:12px 18px 0; display:flex; align-items:center; justify-content:center; overflow:hidden; border:1px solid #324457; border-radius:6px; background:repeating-conic-gradient(#162334 0% 25%,#1d2d40 0% 50%) 0 0 / 24px 24px; }
 .fe-image-stage img { width:100%; height:100%; object-fit:contain; min-height:0; }
 .fe-image-stage.gpfocus { outline:2px solid var(--fe-accent,#69dce3); }
+/* Fill Steam's safe modal frame on handhelds and short/scaled displays. The
+   native frame already reserves the system header and controller footer. */
+@media (max-width:1300px), (max-height:650px) {
+  :has(> .fe-modal) { padding:4px!important; }
+  .fe-modal:not(.fe-keyboard-visible) { width:100%!important; max-width:100%!important; min-width:0!important; height:100%!important; max-height:100%!important; margin:0!important; box-sizing:border-box; border-radius:8px!important; }
+  /* The keyboard uses a fixed-position modal, so its width is viewport-relative.
+     Keep the same 4px side margins as the normal handheld modal frame. */
+  .fe-modal.fe-keyboard-visible { width:calc(100vw - 8px)!important; max-width:calc(100vw - 8px)!important; min-width:0!important; box-sizing:border-box; border-radius:8px!important; }
+  .fe-header { padding:5px 10px; min-height:26px; gap:8px; }
+  .fe-brand { font-size:18px; line-height:24px; gap:7px; }
+  .fe-brand svg { width:24px; height:24px; display:block; }
+  .fe-subtitle { display:none; }
+  .fe-editor .fe-subtitle,.fe-image-viewer .fe-subtitle { display:block; font-size:10px; line-height:14px; margin-top:1px; }
+  .fe-toolbar { padding:5px 8px; gap:5px; }
+  .fe-toolbar .fe-btn,.fe-editor .fe-toolbar .fe-btn { padding:4px!important; min-height:28px!important; line-height:20px!important; font-size:12px!important; }
+  .fe-panes { padding:0 8px; gap:8px; }
+  .fe-path { display:flex; align-items:center; gap:8px; padding:5px 7px; }
+  .fe-path-title { font-size:9px; letter-spacing:.5px; margin:0; flex-shrink:0; }
+  .fe-path-value { flex:1; min-width:0; font-size:12px; }
+  .fe-columns { display:none; }
+  .fe-list { padding:3px; }
+  .fe-row { min-height:calc(var(--fe-text-size,14px) + 14px); padding:2px 5px; gap:6px; }
+  .fe-pane-status { padding:4px 7px; gap:6px; font-size:10px; line-height:14px; }
+  .fe-pane-status>span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .fe-status,.fe-keyboard-visible .fe-status { flex-shrink:0; padding:4px 8px; min-height:16px; gap:6px; line-height:16px; font-size:11px; }
+  .fe-progress { margin:0 8px 4px; }
+  .fe-legend,.fe-keyboard-visible .fe-legend { flex-shrink:0; padding:5px 8px; gap:4px 10px; font-size:10px; line-height:16px; }
+  .fe-legend img { width:16px; height:16px; }
+  .fe-legend span { gap:4px; }
+  .fe-code,.fe-text-input { margin:0 8px; }
+  .fe-line-number,.fe-editor-gutter { width:42px; }
+  .fe-editor .fe-header>div { min-width:0; }
+  .fe-editor .fe-header strong { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .fe-editor .fe-status { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .fe-keyboard-visible .fe-header { padding:4px 8px; }
+  .fe-keyboard-visible .fe-toolbar { padding:4px 8px; }
+  .fe-image-stage { margin:4px 8px 0; }
+  .fe-image-folder { margin-top:2px; font-size:11px; }
+}
 `;

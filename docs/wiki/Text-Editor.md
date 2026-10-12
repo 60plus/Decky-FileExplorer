@@ -14,13 +14,18 @@ text lines without automatically formatting or rewriting the document structure.
 4. Hide the keyboard to return to the editor's cursor and selection controls.
 5. Press **Y** or choose **Save file** to write the file.
 
-![Text editor with line numbers, active line and file encoding](../../images/screenshots/03-text-editor-e0c4f9946117.png)
+![Text editor with line numbers, active line and file encoding](../../images/screenshots/03-text-editor-d668bc2ac194.png)
 
 The **whole editor panel shrinks above Steam's keyboard**, keeping the toolbar,
 active line, nearby text and status visible. The text scrolls as the cursor moves.
 There is no separate line-editing popup. You can edit and paste multiple lines.
 
-![Complete editor panel above Steam's on-screen keyboard](../../images/screenshots/04-keyboard-5d650b4daf23.png)
+On handhelds, **L3** hides the toolbar to show more lines, even while the keyboard
+is open. Press L3 again to show it; **R3** reveals and focuses it. For smaller
+controls in the same window, change **Interface scale** in Settings and reopen
+the editor. See the [handheld examples](Handheld-Gallery.md).
+
+![Complete editor panel above Steam's on-screen keyboard](../../images/screenshots/04-keyboard-34fba006255f.png)
 
 ## Select, copy and paste
 
@@ -29,7 +34,7 @@ the selection. You can select part of a line or continue across several lines.
 Release the trigger to keep the selection, then press **View / Select** or choose
 **Copy text**. If nothing is selected, Copy text copies the current line.
 
-![Selecting several text lines with controller controls](../../images/screenshots/12-text-selection-76faa3beda67.png)
+![Selecting several text lines with controller controls](../../images/screenshots/12-text-selection-2b7cce3b86f0.png)
 
 Move to the destination, press **A** and use **Paste** on Steam's keyboard.
 Pasting replaces selected text or inserts at the cursor. FileExplorer uses the
@@ -52,6 +57,7 @@ toolbar. Moving Up from the first line also reaches the toolbar.
 | --- | --- |
 | Directions | Move the cursor; Up at the first line reaches the toolbar |
 | R3 / right-stick click | Switch between text and toolbar; hide the keyboard when entering the toolbar |
+| L3 / left-stick click | Hide or show the toolbar, including while the keyboard is open |
 | A / Edit text | Open Steam's keyboard at the cursor |
 | RT / R2 + directions | Extend a text selection with the keyboard hidden |
 | View / Select / Copy text | Copy the selection, or the current line |

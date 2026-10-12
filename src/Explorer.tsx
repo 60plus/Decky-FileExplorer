@@ -1,7 +1,7 @@
 import { DialogButton, Focusable, GamepadButton, GamepadEvent, ModalRoot, getFocusNavController } from '@decky/ui';
 import { useEffect, useRef, useState } from 'react';
 import { api, bytes, Entry, Job, Listing, message, Place, State } from './api';
-import { ConfirmDialog, EmptyTrashDialog, MenuDialog, openDialog, PlacesDialog, PreviewDialog, TextDialog } from './dialogs';
+import { ConfirmDialog, EmptyTrashDialog, ExtractionLimitDialog, MenuDialog, openDialog, PlacesDialog, PreviewDialog, TextDialog } from './dialogs';
 import { Editor } from './Editor';
 import { ImageViewer, isImage } from './ImageViewer';
 import { explorerClosed, explorerOpened } from './activity';
@@ -15,8 +15,9 @@ type Pane = { data: Listing | null; loading: boolean; error: string; selected: S
 const empty = (): Pane => ({ data: null, loading: true, error: '', selected: new Set(), focused: '' });
 const isArchive = (name: string) => /\.(zip|rar|7z|tar|gz|bz2|xz|tgz)$/i.test(name);
 function consume(e: Event) { e.preventDefault(); e.stopPropagation(); }
+let shownLimitJob: string | undefined;
 
-export function Explorer({ closeModal }: { closeModal?: () => void }) {
+export function Explorer({ closeModal, openSettings }: { closeModal?: () => void; openSettings: () => void }) {
   const [panes, setPanes] = useState<[Pane, Pane]>([empty(), empty()]);
   const [active, setActive] = useState(0), [job, setJob] = useState<Job | null>(null), [error, setError] = useState('');
   const [state, setState] = useState<State | null>(null), [busyAction, setBusyAction] = useState(false);
@@ -46,7 +47,7 @@ export function Explorer({ closeModal }: { closeModal?: () => void }) {
   useEffect(() => {
     explorerOpened();
     alive.current = true;
-    void api<State>('state').then(s => { if (!alive.current) return; setState(s); setJob(s.job); void load(0, s.settings.left); void load(1, s.settings.right); }).catch(e => setError(message(e)));
+    void api<State>('state').then(s => { if (!alive.current) return; setState(s); setJob(s.job?.status === 'running' ? s.job : null); void load(0, s.settings.left); void load(1, s.settings.right); }).catch(e => setError(message(e)));
     return () => { alive.current = false; explorerClosed(); };
   }, []);
   useEffect(() => {
@@ -59,6 +60,17 @@ export function Explorer({ closeModal }: { closeModal?: () => void }) {
     }, 500);
     return () => window.clearInterval(id);
   }, [running]);
+  useEffect(() => {
+    if (!job || job.status === 'running') return;
+    const finishedId = job.id;
+    const timer = window.setTimeout(() => setJob(current => current?.id === finishedId && current.status !== 'running' ? null : current), 6000);
+    return () => window.clearTimeout(timer);
+  }, [job?.id, job?.status]);
+  useEffect(() => {
+    if (job?.status !== 'error' || !job.error.includes('exceeds extraction size limit (') || shownLimitJob === job.id) return;
+    shownLimitJob = job.id;
+    openDialog(<ExtractionLimitDialog description={job.error} openSettings={() => { closeModal?.(); openSettings(); }} />);
+  }, [job?.id, job?.status]);
 
   function focusPane(index: number) {
     setActive(index);
@@ -167,13 +179,13 @@ export function Explorer({ closeModal }: { closeModal?: () => void }) {
         <div className="fe-columns"><span>Name</span><span>Size</span></div>
         <Focusable className="fe-list" flow-children="column" onGamepadFocus={() => setActive(index)}>
           {pane.loading && !pane.data ? <div className="fe-muted">Loading…</div> : <>
-            <Focusable className={`fe-row ${active === index && pane.focused === '..' ? 'focused' : ''}`} preferredFocus={index === 0} data-current={pane.focused === '..'}
+            <Focusable noFocusRing className={`fe-row ${active === index && pane.focused === '..' ? 'focused' : ''}`} preferredFocus={index === 0} data-current={pane.focused === '..'}
               onGamepadFocus={e => { patch(index, { focused: '..' }); setActive(index); (e.target as HTMLElement).scrollIntoView?.({ block: 'nearest' }); }}
               onActivate={e => { consume(e); if (pane.data && !pane.loading) void load(index, pane.data.parent); }} onClick={() => { setActive(index); if (pane.data && !pane.loading) void load(index, pane.data.parent); }}>
               <span className="fe-check" style={{ borderColor: 'transparent' }}>↑</span><FileIcon folder /><span className="fe-name">..</span><span className="fe-size">Parent folder</span>
             </Focusable>
             {pane.error && <div className="fe-error">{pane.error}<br />Use Locations to choose another folder.</div>}
-            {!pane.error && pane.data?.entries.map(entry => <Focusable key={entry.path} tabIndex={0}
+            {!pane.error && pane.data?.entries.map(entry => <Focusable noFocusRing key={entry.path} tabIndex={0}
               className={`fe-row ${pane.selected.has(entry.path) ? 'selected' : ''} ${active === index && pane.focused === entry.path ? 'focused' : ''}`}
               data-current={pane.focused === entry.path} onGamepadFocus={e => { patch(index, { focused: entry.path }); setActive(index); (e.target as HTMLElement).scrollIntoView?.({ block: 'nearest' }); }}
               onFocus={() => { patch(index, { focused: entry.path }); setActive(index); }}
@@ -186,7 +198,7 @@ export function Explorer({ closeModal }: { closeModal?: () => void }) {
         </Focusable>
         <div className="fe-pane-status"><span>{pane.loading ? 'Loading…' : pane.selected.size ? `${pane.selected.size} selected` : `${pane.data?.entries.length ?? 0} items`}</span><span>{pane.data?.archive ? 'Archive • read-only' : pane.data?.free != null ? `${bytes(pane.data.free)} free` : 'Network share'}</span></div>
       </div>)}</Focusable>
-      <div className="fe-status"><span className="fe-status-text" style={error || job?.status === 'error' ? { color: '#ffb29f' } : undefined} title={error || job?.error || job?.current}>
+      <div className="fe-status"><span className={`fe-status-text${error || job?.status === 'error' ? ' fe-status-error' : ''}`} title={error || job?.error || job?.current}>
         {error || (job ? `${job.status === 'running' ? `${job.phase} • ${job.percent}% • ${bytes(job.bytes)} / ${bytes(job.total_bytes)} • ${bytes(job.speed || 0)}/s • ${job.current.split('/').pop()}` : job.status === 'done' ? `Completed • ${job.completed} item(s) • ${bytes(job.bytes)}` : job.error}` : 'Select files, then copy them to the other panel.')}
       </span>{running && <DialogButton className="fe-btn" onClick={() => void api('cancel').catch(e => setError(message(e)))}>Cancel</DialogButton>}</div>
       {running && <div className="fe-progress"><div style={{ width: `${job?.percent || 0}%` }} /><span>You can close this window. The operation continues in the background.</span></div>}

@@ -48,7 +48,7 @@ export function ImageViewer({ entries, selected, folder, closeModal }: { entries
       onKeyDown={e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { stop(e); move(e.key === 'ArrowLeft' ? -1 : 1); } }}
       actionDescriptionMap={{ [GamepadButton.BUMPER_LEFT]: 'Previous image', [GamepadButton.BUMPER_RIGHT]: 'Next image' }}>
       <header className="fe-header"><div className="fe-image-title"><strong>{current?.name || 'Image preview'}</strong><div className="fe-subtitle">{index + 1} / {items.length} images in this folder{shown && ` • ${shown.width} × ${shown.height} • ${bytes(shown.size)}`}</div><div className="fe-image-folder" title={folder}>{folder}</div></div></header>
-      <Focusable className="fe-image-stage" preferredFocus aria-label="Image preview">
+      <Focusable noFocusRing className="fe-image-stage" preferredFocus aria-label="Image preview">
         {error ? <div className="fe-error" role="alert">{error}<br />Use left or right to open another image.</div> : shown ? <img key={current.path} src={shown.data} alt={current.name} draggable={false} onError={() => setError('This image could not be decoded. The file may be damaged or use unsupported encoding.')} /> : <div className="fe-muted" role="status">Loading image…</div>}
       </Focusable>
       <Focusable className="fe-toolbar" flow-children="row"><DialogButton className="fe-btn" disabled={items.length < 2} onClick={() => move(-1)}>← Previous</DialogButton><DialogButton className="fe-btn" disabled={items.length < 2} onClick={() => move(1)}>Next →</DialogButton><DialogButton className="fe-btn" onClick={closeModal}>Close</DialogButton></Focusable>

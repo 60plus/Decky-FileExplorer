@@ -42,6 +42,13 @@ export function EmptyTrashDialog({ submit, closeModal }: { submit: () => Promise
   return <ConfirmDialog title="Empty Trash?" danger="This also empties your Desktop Mode Trash!" description="FileExplorer and the SteamOS desktop use the same Trash. All trashed files, including those on connected drives, will be permanently deleted. This cannot be undone." action="Empty Trash" submit={submit} closeModal={closeModal} />;
 }
 
+export function ExtractionLimitDialog({ description, openSettings, closeModal }: { description: string; openSettings: () => void; closeModal?: () => void }) {
+  return <ModalRoot onCancel={closeModal} closeModal={closeModal}><style>{css}</style><Focusable className="fe-dialog" flow-children="column">
+    <h2>Extraction limit exceeded</h2><p className="fe-description">{description}</p>
+    <Focusable className="fe-actions" flow-children="row"><DialogButton onClick={() => { closeModal?.(); openSettings(); }}>Open Settings</DialogButton><DialogButton onClick={closeModal}>Cancel</DialogButton></Focusable>
+  </Focusable></ModalRoot>;
+}
+
 export function MenuDialog({ title, actions, closeModal }: { title: string; actions: { label: string; run: () => void; disabled?: boolean }[]; closeModal?: () => void }) {
   return <ModalRoot onCancel={closeModal} closeModal={closeModal}><style>{css}</style><Focusable className="fe-dialog" flow-children="column"><h2>{title}</h2><Focusable className="fe-stack" flow-children="column">
     {actions.map(a => <DialogButton key={a.label} disabled={a.disabled} onClick={() => { closeModal?.(); a.run(); }}>{a.label}</DialogButton>)}

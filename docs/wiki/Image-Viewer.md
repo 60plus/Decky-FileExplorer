@@ -3,8 +3,9 @@
 # Image viewer
 
 Open pictures directly in Gaming Mode. FileExplorer previews **BMP, PNG, JPEG,
-GIF and WebP** in a large central window, fitted to the available space while
-keeping the image's aspect ratio.
+GIF and WebP**, fitted to the available space while keeping the image's aspect
+ratio. On handhelds and smaller screens, the viewer fills the space between
+Steam's header and controller controls.
 
 ## Open and browse pictures
 

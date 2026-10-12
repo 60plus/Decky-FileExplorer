@@ -2,15 +2,16 @@ import { CSSProperties, RefObject, useEffect, useLayoutEffect, useState } from '
 import { api, Settings, State } from './api';
 
 export const accents = { cyan: '#69dce3', blue: '#83baff', green: '#8ee3ad', amber: '#f6ce72', violet: '#b9a2ff', rose: '#ffa2bb' };
-export const defaultAppearance = { accent: 'cyan', opacity: 100, text_size: 14 };
+export const defaultAppearance = { accent: 'cyan', opacity: 100, text_size: 14, ui_scale: 100 };
 
 export function appearanceStyle(settings?: Partial<Settings>): CSSProperties {
   const color = accents[settings?.accent as keyof typeof accents] || accents.cyan;
   const opacity = [70, 85, 100].includes(settings?.opacity || 0) ? settings!.opacity! / 100 : 1;
   const size = [12, 14, 16, 18].includes(settings?.text_size || 0) ? settings!.text_size : 14;
+  const scale = [70, 80, 90, 100].includes(settings?.ui_scale || 0) ? settings!.ui_scale! / 100 : 1;
   return { '--fe-accent': color, '--fe-highlight': color + '30', '--fe-background': `rgba(16,28,44,${opacity})`,
     '--fe-pane-background': `rgba(21,34,54,${opacity})`, '--fe-code-background': `rgba(13,23,35,${opacity})`,
-    '--fe-text-size': size + 'px', '--fe-line-height': (size! * 2) + 'px' } as CSSProperties;
+    '--fe-text-size': size + 'px', '--fe-line-height': (size! * 2) + 'px', '--fe-scale': scale } as CSSProperties;
 }
 
 export function useAppearance() {

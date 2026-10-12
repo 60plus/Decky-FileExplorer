@@ -8,7 +8,7 @@ export async function api<T = any>(method: string, args: Record<string, unknown>
 }
 export type Entry = { name: string; path: string; directory: boolean; link: boolean; size: number; modified: number; hidden: boolean };
 export type Listing = { path: string; parent: string; entries: Entry[]; free: number | null; archive: boolean; label?: string };
-export type Settings = { show_hidden: boolean; folders_first: boolean; sort_by: string; remember_paths: boolean; left: string; right: string; extraction_limit_gib: number; accent: string; opacity: number; text_size: number; check_updates_on_start: boolean };
+export type Settings = { show_hidden: boolean; folders_first: boolean; sort_by: string; remember_paths: boolean; left: string; right: string; extraction_limit_gib: number; accent: string; opacity: number; text_size: number; ui_scale: number; check_updates_on_start: boolean };
 export type Connection = { id: string; label: string; host: string; share: string; username: string; saved: boolean };
 export type Job = { id: string; action: string; kind?: string; status: string; bytes: number; current: string; completed: number; total: number; error: string; outputs: string[]; phase: string; total_bytes: number; percent: number; speed: number; background?: boolean; label?: string };
 export type TextFile = { text: string; encoding: string; bom: boolean; newline: string; revision: string; name: string; location: string };

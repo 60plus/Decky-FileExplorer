@@ -30,7 +30,9 @@ def main():
         original = page.read_text(encoding='utf-8')
         updated = original
         for image, target in changes.items():
-            updated = updated.replace(image.name, target.name)
+            # A PC filename can be a suffix of a handheld filename. Match the
+            # full basename so each capture keeps its own content hash.
+            updated = re.sub(r'(?<![\w.-])' + re.escape(image.name) + r'(?![\w.-])', target.name, updated)
         if updated != original:
             page.write_text(updated, encoding='utf-8', newline='\n')
     print(f'Refreshed {len(changes)} screenshot filenames and matching documentation links.')

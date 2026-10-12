@@ -7,11 +7,12 @@ import { Cursor, lineOffset, moveCursor, position, selectedText } from './editor
 import { Glyph } from './Glyph';
 import { css } from './style';
 import { useKeyboardSpace } from './useKeyboardSpace';
+import { preserveBackgroundScroll } from './backgroundScroll';
 
 // Steam's own multiline input supplies keyboard and controller integration.
 type KeyboardHandle = { TakeFocusAndShowKeyboard: () => void; HideVirtualKeyboard: () => void };
 const NativeTextArea = findModuleExport(value => value?.prototype?.InternalOnInput &&
-  value.prototype.GetMaxHeight && value.prototype.OnPaste) as ComponentType<TextareaHTMLAttributes<HTMLTextAreaElement> & { refKeyboardHandle?: RefObject<KeyboardHandle> }> | undefined;
+  value.prototype.GetMaxHeight && value.prototype.OnPaste) as ComponentType<TextareaHTMLAttributes<HTMLTextAreaElement> & { refKeyboardHandle?: RefObject<KeyboardHandle>; noFocusRing?: boolean }> | undefined;
 type Snapshot = { text: string; cursor: Cursor };
 const stop = (event: Event) => { event.preventDefault(); event.stopPropagation(); };
 
@@ -24,12 +25,14 @@ export function Editor({ location, saved, closeModal }: { location: string; save
   const editStarted = useRef(false), pendingCursor = useRef<Cursor | null>(null);
   const keyboardHandle = useRef<KeyboardHandle>(null);
   const keyboardWasShown = useRef(false);
+  const releaseBackgroundScroll = useRef<(() => void) | null>(null);
   const region = useRef<'text' | 'toolbar'>('text');
   const restoringFocus = useRef(false);
   const [toolbarFocused, setToolbarFocused] = useState(false);
+  const [toolbarHidden, setToolbarHidden] = useState(false);
   const live = useRef({ text, cursor }); live.current = { text, cursor };
   const keyboard = useKeyboardSpace(root), appearance = useAppearance();
-  useModalStyle(root, { ...appearance, ...keyboard.style });
+  useModalStyle(root, appearance);
   const lines = text.split('\n'), selected = position(text, cursor.head).row, dirty = !!file && text !== file.text;
   const TextArea = NativeTextArea || 'textarea';
   const input = () => root.current?.querySelector<HTMLTextAreaElement>('textarea');
@@ -52,21 +55,27 @@ export function Editor({ location, saved, closeModal }: { location: string; save
     }, 30);
   }
   function focusToolbar() {
+    setToolbarHidden(false);
     restoringFocus.current = true; region.current = 'toolbar'; setToolbarFocused(true); selecting.current = false;
     if (editing) { keyboardHandle.current?.HideVirtualKeyboard(); setEditing(false); }
     window.setTimeout(() => { takeFocus(root.current?.querySelector<HTMLElement>('.fe-toolbar button:not(:disabled)')); restoringFocus.current = false; }, 30);
   }
   function focusText() { restoringFocus.current = true; region.current = 'text'; setToolbarFocused(false); focusLine(selected); }
+  function toggleToolbar() {
+    setToolbarHidden(hidden => !hidden);
+    if (!toolbarHidden && region.current === 'toolbar') focusText();
+  }
   useEffect(() => {
     const doc = root.current?.ownerDocument;
     const shortcut = (event: Event) => {
       const e = event as GamepadEvent;
-      if (e.detail?.button !== GamepadButton.RSTICK_CLICK || e.detail.is_repeat) return;
+      if (![GamepadButton.LSTICK_CLICK, GamepadButton.RSTICK_CLICK].includes(e.detail?.button) || e.detail.is_repeat) return;
       if (!root.current?.contains(e.target as Node) && !(editing && keyboard.visible)) return;
       stop(e);
+      if (e.detail.button === GamepadButton.LSTICK_CLICK) { toggleToolbar(); return; }
       if (region.current === 'toolbar') focusText(); else focusToolbar();
     };
-    // Capture also reaches R3 while Steam's keyboard owns the navigation focus.
+    // Capture also reaches the stick shortcuts while Steam's keyboard owns focus.
     doc?.addEventListener('vgp_onbuttondown', shortcut, true);
     return () => doc?.removeEventListener('vgp_onbuttondown', shortcut, true);
   });
@@ -74,7 +83,10 @@ export function Editor({ location, saved, closeModal }: { location: string; save
     const area = input(); if (!area) return;
     const styles = area.ownerDocument.defaultView!.getComputedStyle(area);
     const height = parseFloat(styles.lineHeight), row = position(area.value, area.selectionDirection === 'backward' ? area.selectionStart : area.selectionEnd).row;
-    const top = row * height + parseFloat(styles.paddingTop), margin = height;
+    const top = row * height + parseFloat(styles.paddingTop);
+    // A full-line margin on both sides can push the caret out of a short
+    // viewport above Steam's keyboard, especially with the largest text size.
+    const margin = Math.min(height, Math.max(0, (area.clientHeight - height) / 2));
     if (top < area.scrollTop + margin) area.scrollTop = Math.max(0, top - margin);
     else if (top + height > area.scrollTop + area.clientHeight - margin) area.scrollTop = top + height - area.clientHeight + margin;
     setScroll(area.scrollTop);
@@ -87,10 +99,20 @@ export function Editor({ location, saved, closeModal }: { location: string; save
     } catch (e) { setError(message(e)); } finally { setBusy(false); }
   }
   useEffect(() => { void load(); }, []);
+  useEffect(() => () => releaseBackgroundScroll.current?.(), []);
   useEffect(() => {
     if (!editing) root.current?.querySelector(`[data-line="${selected}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     else keepCaretVisible();
-  }, [selected, editing, keyboard.visible, keyboard.style]);
+  }, [selected, editing, keyboard.visible, toolbarHidden]);
+  useEffect(() => {
+    const area = input(); if (!area) return;
+    // The keyboard changes the surface directly on animation frames. Keep the
+    // cursor visible as the textarea shrinks without rendering its document for
+    // every new panel height.
+    const observer = new ResizeObserver(keepCaretVisible);
+    observer.observe(area);
+    return () => observer.disconnect();
+  }, [editing]);
   useLayoutEffect(() => {
     const area = input(), next = pendingCursor.current;
     if (!area || !next) return;
@@ -128,6 +150,7 @@ export function Editor({ location, saved, closeModal }: { location: string; save
     region.current = 'text'; setToolbarFocused(false);
     if (row !== selected) { const offset = lineOffset(text, row); pendingCursor.current = { anchor: offset, head: offset }; setCursor(pendingCursor.current); }
     else pendingCursor.current = cursor;
+    if (root.current && !releaseBackgroundScroll.current) releaseBackgroundScroll.current = preserveBackgroundScroll(root.current);
     editStarted.current = false; selecting.current = false; setEditing(true); setNotice('');
   }
   function finishEditing() { restoringFocus.current = true; keyboardHandle.current?.HideVirtualKeyboard(); setEditing(false); selecting.current = false; if (region.current === 'toolbar') focusToolbar(); else focusLine(selected); }
@@ -202,7 +225,7 @@ export function Editor({ location, saved, closeModal }: { location: string; save
     return points.map((point, i) => <span key={point}>{point === caret && <i className="fe-caret" />}{i < points.length - 1 && <span className={point >= start && point < end ? 'fe-selection' : undefined}>{line.slice(point, points[i + 1])}</span>}</span>);
   }
   let offset = 0;
-  return <ModalRoot className={`fe-modal fe-editor-modal ${keyboard.visible ? 'fe-keyboard-visible' : ''}`} style={{ ...appearance, ...keyboard.style }} bAllowFullSize bHideCloseIcon onCancel={leave} closeModal={leave}><style>{css}</style>
+  return <ModalRoot className="fe-modal fe-editor-modal" style={appearance} bAllowFullSize bHideCloseIcon onCancel={leave} closeModal={leave}><style>{css}</style>
     <Focusable className="fe-app fe-editor" ref={root} flow-children="column"
       onCancelButton={e => { stop(e); leave(); }}
       onSecondaryButton={e => { if (!keyboard.visible) { stop(e); insert(); } }}
@@ -217,8 +240,8 @@ export function Editor({ location, saved, closeModal }: { location: string; save
       onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.stopPropagation(); undo(); } }}
       actionDescriptionMap={{ [GamepadButton.START]: 'Undo', [GamepadButton.SELECT]: 'Copy text' }}
       onOKActionDescription={toolbarFocused ? 'Use button' : editing ? 'Keyboard' : 'Edit text'} onSecondaryActionDescription="Insert line" onOptionsActionDescription="Save file">
-      <header className="fe-header"><div><strong>{file?.name || location.split('/').pop()}</strong><div className="fe-subtitle">{file ? `${file.encoding}${file.bom ? ' + BOM' : ''} • ${file.newline} • ${lines.length} lines${dirty ? ' • Unsaved changes' : ''}` : 'Text editor'}</div></div></header>
-      <Focusable className="fe-toolbar" flow-children="row" onGamepadFocus={() => { region.current = 'toolbar'; setToolbarFocused(true); }}
+      <header className="fe-header"><div className="fe-editor-title"><strong>{file?.name || location.split('/').pop()}</strong><div className="fe-subtitle">{file ? `${file.encoding}${file.bom ? ' + BOM' : ''} • ${file.newline} • ${lines.length} lines${dirty ? ' • Unsaved changes' : ''}` : 'Text editor'}</div></div><DialogButton className="fe-btn fe-toolbar-toggle" onClick={toggleToolbar}>{toolbarHidden ? 'Show toolbar' : 'Hide toolbar'}</DialogButton></header>
+      {!toolbarHidden && <Focusable className="fe-toolbar" flow-children="row" onGamepadFocus={() => { region.current = 'toolbar'; setToolbarFocused(true); }}
         onGamepadDirection={e => { if (e.detail.button === GamepadButton.DIR_DOWN) { stop(e); focusText(); } }}>
         <DialogButton className="fe-btn" disabled={!file || busy} onClick={() => editing ? finishEditing() : edit()}>{editing ? 'Done editing' : 'Edit text'}</DialogButton>
         <DialogButton className="fe-btn" disabled={!file || busy} onClick={insert}>Insert line</DialogButton>
@@ -227,23 +250,23 @@ export function Editor({ location, saved, closeModal }: { location: string; save
         <DialogButton className="fe-btn" disabled={!history.current.length || busy} onClick={undo}>Undo</DialogButton>
         <DialogButton className="fe-btn" disabled={!dirty || busy} onClick={() => void save()}>Save file</DialogButton>
         <DialogButton className="fe-btn" onClick={leave}>{editing ? 'Back' : 'Close'}</DialogButton>
-      </Focusable>
+      </Focusable>}
       {!file && <div className="fe-encoding"><DropdownItem label="File encoding" selectedOption={encoding} rgOptions={['auto', 'utf-8', 'utf-16-le', 'utf-16-be', 'cp1250', 'cp1252', 'latin-1'].map(data => ({ data, label: data === 'auto' ? 'Auto (UTF-8 / BOM)' : data }))} onChange={o => { setEncoding(o.data); void load(o.data); }} /></div>}
       <ErrorText text={error} />
       {editing ? <div className="fe-text-input">
         <div className="fe-editor-gutter" aria-hidden="true"><div style={{ transform: `translateY(${-scroll}px)` }}>{lines.map((_, row) => <div key={row} className={selected === row ? 'active' : ''}>{row + 1}</div>)}</div></div>
-        <TextArea {...(NativeTextArea ? { refKeyboardHandle: keyboardHandle } : {})} className="fe-editor-textarea" aria-label="File contents" value={text} wrap="off" spellCheck={false} autoCapitalize="off" autoCorrect="off" disabled={busy}
+        <TextArea {...(NativeTextArea ? { refKeyboardHandle: keyboardHandle, noFocusRing: true } : {})} className="fe-editor-textarea" aria-label="File contents" value={text} wrap="off" spellCheck={false} autoCapitalize="off" autoCorrect="off" disabled={busy}
           onChange={e => changed(e.currentTarget)} onSelect={e => readSelection(e.currentTarget)} onScroll={e => setScroll(e.currentTarget.scrollTop)}
           onKeyUp={() => keepCaretVisible()} onClick={() => keepCaretVisible()} />
       </div> : <Focusable className="fe-code" flow-children="column" onGamepadFocus={() => { if (!restoringFocus.current) { region.current = 'text'; setToolbarFocused(false); } }}>
-        {lines.map((line, row) => { const start = offset; offset += line.length + 1; return <Focusable key={row} data-line={row} preferredFocus={row === 0} className={`fe-code-line ${selected === row ? 'active' : ''}`}
+        {lines.map((line, row) => { const start = offset; offset += line.length + 1; return <Focusable noFocusRing key={row} data-line={row} preferredFocus={row === 0} className={`fe-code-line ${selected === row ? 'active' : ''}`}
           onGamepadDirection={e => direction(e, row)}
           onGamepadFocus={() => { if (!restoringFocus.current && position(live.current.text, live.current.cursor.head).row !== row) { const head = lineOffset(text, row); setCursor({ anchor: head, head }); } }}
           onClick={() => { region.current = 'text'; setToolbarFocused(false); const head = lineOffset(text, row); setCursor({ anchor: head, head }); }} onDoubleClick={() => edit(row)}
           onActivate={e => { stop(e); edit(row); }}><span className="fe-line-number">{row + 1}</span><code>{renderedLine(line, row, start)}</code></Focusable>; })}
       </Focusable>}
       <div className="fe-status">{busy ? 'Working…' : notice || `Line ${selected + 1}, column ${position(text, cursor.head).column + 1}${cursor.anchor !== cursor.head ? ` • ${Math.abs(cursor.head - cursor.anchor)} characters selected` : ''} • ${editing ? 'Steam keyboard: Paste inserts clipboard text at the cursor' : 'Directions move the cursor • Copy uses the selection or current line'}`}</div>
-      <div className="fe-legend">{keyboard.visible ? <><span>Steam keyboard: Paste</span><span>Arrow keys: move cursor</span><Glyph button={GamepadButton.RSTICK_CLICK} label="Toolbar" /></> : <><Glyph button={GamepadButton.OK} label={toolbarFocused ? 'Use button' : editing ? 'Keyboard' : 'Edit text'} /><Glyph button={GamepadButton.CANCEL} label="Back" /><Glyph button={GamepadButton.SECONDARY} label="Insert line" /><Glyph button={GamepadButton.OPTIONS} label="Save" /><Glyph button={GamepadButton.START} label="Undo" /><Glyph button={GamepadButton.SELECT} label="Copy" /><Glyph button={GamepadButton.RSTICK_CLICK} label={toolbarFocused ? 'Text' : 'Toolbar'} />{!editing && <Glyph button={GamepadButton.TRIGGER_RIGHT} label="+ directions: select" />}</>}</div>
+      <div className="fe-legend"><Glyph button={GamepadButton.LSTICK_CLICK} label={toolbarHidden ? 'Show toolbar' : 'Hide toolbar'} />{keyboard.visible ? <><span>Steam keyboard: Paste</span><span>Arrow keys: move cursor</span><Glyph button={GamepadButton.RSTICK_CLICK} label="Toolbar" /></> : <><Glyph button={GamepadButton.OK} label={toolbarFocused ? 'Use button' : editing ? 'Keyboard' : 'Edit text'} /><Glyph button={GamepadButton.CANCEL} label="Back" /><Glyph button={GamepadButton.SECONDARY} label="Insert line" /><Glyph button={GamepadButton.OPTIONS} label="Save" /><Glyph button={GamepadButton.START} label="Undo" /><Glyph button={GamepadButton.SELECT} label="Copy" /><Glyph button={GamepadButton.RSTICK_CLICK} label={toolbarFocused ? 'Text' : 'Toolbar'} />{!editing && <Glyph button={GamepadButton.TRIGGER_RIGHT} label="+ directions: select" />}</>}</div>
     </Focusable>
   </ModalRoot>;
 }

@@ -48,7 +48,9 @@ instead, or extract the whole archive locally and then copy the result.
   contents to the destination. Remote archives are downloaded temporarily for
   reading, so allow local space as well as destination space.
 - **Settings → Extraction limit** sets the maximum unpacked size per archive:
-  10, 50, 100 or 500 GiB. The default is 100 GiB.
+  10, 50, 100 or 500 GiB. Move the slider fully right for **Unlimited**.
+  The default is 100 GiB. Unlimited removes the size cap, not the need for free
+  destination and temporary disk space.
 - Archives have a 100,000-entry limit. Unsafe paths, links and special files are
   rejected, including unsafe entries outside the selected subset.
 - Password-protected and multipart archives are not supported. Some uncommon RAR
@@ -57,5 +59,14 @@ instead, or extract the whole archive locally and then copy the result.
 - Extract a text file before editing it. Archive contents are read-only.
 
 An existing destination name stops extraction instead of overwriting it.
-If extraction fails, read the status message and check the destination before
-retrying. See [Troubleshooting](Troubleshooting.md).
+If the archive exceeds the size limit, a dialog shows the current limit and
+offers **Open Settings**. This opens **Extraction limit** directly. Increase it
+or choose **Unlimited**, then start extraction again. Opening Settings does not
+change the limit or retry the operation automatically. **Cancel / B** returns to
+the file manager.
+
+![Archive limit dialog with the current limit and Open Settings button](../../images/screenshots/20-extraction-limit-7b3307f2e97f.png)
+
+The bottom result message disappears after six seconds and does not return when
+FileExplorer is reopened. Check the destination before retrying a failed
+operation. See [Troubleshooting](Troubleshooting.md).

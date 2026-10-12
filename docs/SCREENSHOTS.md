@@ -7,6 +7,9 @@ Controller glyphs are supplied by Steam.
 
 [Back to the README](../README.md)
 
+See also the [handheld gallery](wiki/Handheld-Gallery.md), captured on a ROG Ally
+running SteamOS, including interface scaling and the editor's L3 toolbar toggle.
+
 ## Update from GitHub
 
 Check the latest stable release, read the release notes and download the update.
@@ -19,7 +22,7 @@ The ZIP is verified before Decky opens its installation prompt.
 Startup checks can notify once per OS boot. The Settings switch disables automatic
 checks and notifications while keeping manual updates available.
 
-![Startup update preference in the Decky sidebar](../images/screenshots/17-update-settings-d7a4e8f08237.png)
+![Startup update preference in the Decky sidebar](../images/screenshots/17-update-settings-a8b877f12651.png)
 
 ## Two folders, one controller
 
@@ -42,14 +45,14 @@ changes possible without leaving Gaming Mode. Formatting and encoding are retain
 JSON also receives a syntax check before saving. The example shows a JSON file with CRLF endings.
 Press **R3** to reach the toolbar and again to return to the cursor.
 
-![Text editor showing a controller configuration](../images/screenshots/03-text-editor-e0c4f9946117.png)
+![Text editor showing a controller configuration](../images/screenshots/03-text-editor-d668bc2ac194.png)
 
 ## See the line above the keyboard
 
 Press **A** to edit. The whole editor panel shrinks above Steam's on-screen keyboard,
 keeping the toolbar, current line, nearby text and status visible.
 
-![Editing controller sensitivity with Steam's keyboard](../images/screenshots/04-keyboard-5d650b4daf23.png)
+![Editing controller sensitivity with Steam's keyboard](../images/screenshots/04-keyboard-34fba006255f.png)
 
 ## Follow a transfer at a glance
 
@@ -102,8 +105,12 @@ The dialog was cancelled after this screenshot; no user files were deleted.
 
 Choose an accent color, background opacity and text size in the compact Decky sidebar.
 Reset appearance restores the default look without changing folders or connections.
+Opacity, interface scale and extraction limit use full-width sliders. Press **X**
+to expand help for the focused setting; moving up/down hides it again.
 
-![Appearance settings and color preview](../images/screenshots/11-appearance-settings-ae2cddb1a94a.png)
+![Appearance settings and color preview](../images/screenshots/11-appearance-settings-7c09f0487bdf.png)
+
+![Separate spacing for Reset appearance, Empty Trash and Saved connections](../images/screenshots/18-settings-actions-331a6926a6b3.png)
 
 ## Select and copy text with the controller
 
@@ -111,7 +118,7 @@ Hold **RT/R2** while moving in the text to select a fragment or several lines.
 **View/Select** copies into the system clipboard. Use Steam's keyboard to paste,
 and **Menu/Start** to undo an edit.
 
-![Multiline text selection with native controller glyphs](../images/screenshots/12-text-selection-76faa3beda67.png)
+![Multiline text selection with native controller glyphs](../images/screenshots/12-text-selection-2b7cce3b86f0.png)
 
 ## View pictures in Gaming Mode
 
