@@ -40,7 +40,8 @@ def main():
                     destination = f'{base}/blob/main/{relative}'
             return f'{label}({destination}{marker}{fragment})'
 
-        exports[page.name] = re.sub(r'(!?\[[^\]\n]*\])\(([^)\n]+)\)', link,
+        # Match the image and its enclosing link separately in [![alt](src)](href).
+        exports[page.name] = re.sub(r'(!?\[[^\[\]\n]*\]|\])\(([^)\n]+)\)', link,
                                     page.read_text(encoding='utf-8'))
     # Validate all links before changing the checkout. Unrelated pages are kept.
     for name, content in exports.items():
