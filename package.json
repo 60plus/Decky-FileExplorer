@@ -1,6 +1,6 @@
 {
   "name": "decky-fileexplorer",
-  "version": "0.6.3",
+  "version": "0.7.1",
   "description": "Two panels. One controller. A file manager for Decky Loader.",
   "type": "module",
   "license": "MIT",

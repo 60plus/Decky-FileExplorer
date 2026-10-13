@@ -1,0 +1,7 @@
+{
+  "mp3": "audio/mpeg", "mp2": "audio/mpeg", "wav": "audio/wav", "wave": "audio/wav",
+  "flac": "audio/flac", "ogg": "audio/ogg", "oga": "audio/ogg", "opus": "audio/ogg",
+  "m4a": "audio/mp4", "m4b": "audio/mp4", "aac": "audio/aac", "weba": "audio/webm",
+  "mp4": "video/mp4", "m4v": "video/mp4", "mov": "video/mp4", "webm": "video/webm",
+  "ogv": "video/ogg", "mkv": "video/x-matroska"
+}

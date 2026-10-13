@@ -6,14 +6,15 @@ A simple, controller-friendly file manager for **SteamOS and Decky Loader**.
 Open two folders side by side, select your files and copy them across.
 
 [User manual](https://github.com/60plus/Decky-FileExplorer/wiki) ·
+[Handheld guide](docs/wiki/Handheld-Guide.md) ·
 [How it works](https://github.com/60plus/Decky-FileExplorer/wiki/How-It-Works) ·
 [Troubleshooting](https://github.com/60plus/Decky-FileExplorer/wiki/Troubleshooting)
 
 ## What it does
 
 - **Two panels** with independent folders and selections. On handhelds and smaller screens, the window fills the available space between Steam's header and controller controls.
-- **Gamepad controls** with Steam's controller glyphs and a permanent button legend.
-- **Copy files and folders** between local disks and SMB shares, with percentage, transfer speed and cancellation.
+- **Gamepad controls** with Steam's controller glyphs. Choose hints on the panel, Steam bar, both, or neither.
+- **Copy files and folders** between local disks and SMB shares, with percentage, transfer speed, confirmed cancellation and verified resume after an interrupted copy.
 - **Background transfers through systemd** keep copying or extracting after closing FileExplorer. Plugin notifications report 25%, 50%, 75% and completion while the window is closed.
 - **Open ZIP, RAR, 7z and TAR archives like folders**, select their contents and extract them to the other panel, using SteamOS's libarchive.
 - **Discover SMB servers and list their shares** from the connection dialog.
@@ -24,6 +25,8 @@ Open two folders side by side, select your files and copy them across.
 - **Move local files to Trash** and restore them in Desktop Mode. **Empty Trash** is available in Options and Settings with a separate confirmation. SMB deletion is permanent.
 - **Edit small text files** such as TXT, CFG, INI, JSON, XML and scripts, preserving their existing formatting and encoding.
 - **Preview BMP, PNG, JPEG, GIF and WebP images** fitted to the available space. Left/right switches between images in the current folder, including SMB and archive folders.
+- **Play audio and video** with pause, seek, stop, previous/next file and fullscreen video. Embedded audio covers appear automatically; a speaker icon fills in when no cover is present. See the [media guide](docs/wiki/Media-Player.md) for formats and compatibility playback.
+- **Recognize text, configuration, code, archive, image, audio and video files** with distinct icons. A opens supported previews; **Options → Edit file** tries an unfamiliar extension as text.
 - **Select and copy text with the controller**, paste through Steam's keyboard and undo with Menu/Start. The whole editor fits above the keyboard.
 - **Customize the appearance** with six accent colors, background opacity, four text sizes and 70% to 100% interface scaling. The window keeps its size while smaller controls leave more room for content.
 
@@ -32,14 +35,39 @@ Settings, Update and About stay inside the compact sidebar. **Update** checks th
 shows its release notes, verifies the download and opens Decky's installation prompt.
 Startup checks notify once per OS boot when a newer version is available. Disable them in Settings if preferred.
 
+## Supported formats
+
+| Type | Recognized formats | What opens |
+| --- | --- | --- |
+| Audio (12 extensions) | `mp3`, `mp2`, `wav`, `wave`, `flac`, `ogg`, `oga`, `opus`, `m4a`, `m4b`, `aac`, `weba` | Player with embedded cover or speaker icon |
+| Video (6 extensions) | `mp4`, `m4v`, `mov`, `webm`, `ogv`, `mkv` | Player with seek, pause and fullscreen |
+| Images | BMP, PNG/APNG, JPG/JPEG/JPE/JFIF, GIF, WebP | Image viewer; previous/next picture |
+| Archives | ZIP, RAR, 7z, TAR, GZ, BZ2, XZ, TGZ, TBZ/TBZ2, TXZ | Browse and extract files |
+| Text (238 extensions, plus known filenames) | TXT, LOG, CFG/INI/CONF, JSON, YAML, TOML, XML, Markdown, CSV/TSV, subtitles, source code and more | Plain-text editor, preserving original formatting |
+
+Media playback depends on the codecs inside the file. When needed, system FFmpeg
+provides compatibility playback, up to 720p/30 fps for video. A filename extension
+alone does not guarantee that every encoded file will play.
+
+PDF, DOC/DOCX, XLS/XLSX, PPT/PPTX and ODT/ODS/ODP are **not displayed as documents**.
+HTML, SVG, RTF, Markdown and notebook files open as **source text**, without page
+layout or rich formatting. Unknown text extensions can use **Options → Edit file**;
+binary data is rejected. Opening a script never executes it.
+
+[Complete text extension and filename list](docs/wiki/Supported-Formats.md) · [Audio/video controls](docs/wiki/Media-Player.md)
+
 ## See it in action
 
 | PC | Handheld |
 | --- | --- |
 | [![Two file panels on a SteamOS PC](images/screenshots/01-two-panels-c446ee4897f4.png)](images/screenshots/01-two-panels-c446ee4897f4.png) | [![Two file panels on a SteamOS handheld](images/screenshots/handheld-01-two-panels-c2e9c0a15101.png)](images/screenshots/handheld-01-two-panels-c2e9c0a15101.png) |
 | Browse and copy between two folders. | The same controls, fitted to the handheld screen. |
-| [![PC text editor above Steam's keyboard](images/screenshots/04-keyboard-34fba006255f.png)](images/screenshots/04-keyboard-34fba006255f.png) | [![Handheld text editor at 80 percent scale above Steam's keyboard](images/screenshots/handheld-16-scaled-keyboard-e93ef9e92a7a.png)](images/screenshots/handheld-16-scaled-keyboard-e93ef9e92a7a.png) |
+| [![PC text editor above Steam's keyboard](images/screenshots/pc-keyboard-5a4fc1f455bf.png)](images/screenshots/pc-keyboard-5a4fc1f455bf.png) | [![Handheld text editor at 80 percent scale above Steam's keyboard](images/screenshots/handheld-scaled-keyboard-9542e7a3a971.png)](images/screenshots/handheld-scaled-keyboard-9542e7a3a971.png) |
 | Keep the edited text visible above the keyboard. | Smaller controls and a hidden toolbar leave more room for text. |
+| [![Video playback on a SteamOS PC](images/screenshots/pc-media-video-784402732063.png)](images/screenshots/pc-media-video-784402732063.png) | [![Video playback on a SteamOS handheld](images/screenshots/handheld-media-video-31619e6726cf.png)](images/screenshots/handheld-media-video-31619e6726cf.png) |
+| Play, pause and seek without leaving Gaming Mode. | The player and controller hints fit the handheld screen. |
+| [![Four controller legend modes on pc](images/screenshots/pc-legend-comparison-ac8bf11feeb0.png)](images/screenshots/pc-legend-comparison-ac8bf11feeb0.png) | [![Four controller legend modes on handheld](images/screenshots/handheld-legend-comparison-9301ecfb7c8a.png)](images/screenshots/handheld-legend-comparison-9301ecfb7c8a.png) |
+| Compare panel hints, the Steam bar, both and hidden. | The same four modes on the handheld. Click to enlarge. |
 
 Expand a gallery below for more screenshots from SteamOS Gaming Mode.
 Click any image to open it at full size. Full galleries: [PC](docs/SCREENSHOTS.md)
@@ -48,18 +76,29 @@ and [handheld](docs/wiki/Handheld-Gallery.md).
 <details>
 <summary><strong>PC</strong></summary>
 
+### Media, recovery and optional controls
+
+| Audio and video player | Embedded audio cover |
+| --- | --- |
+| [![Audio and video player](images/screenshots/pc-media-video-784402732063.png)](images/screenshots/pc-media-video-784402732063.png) | [![Embedded audio cover](images/screenshots/pc-media-audio-cover-3f939c3bcf38.png)](images/screenshots/pc-media-audio-cover-3f939c3bcf38.png) |
+
+| Recover a copy while FileExplorer is closed | Both legends hidden |
+| --- | --- |
+| [![Recover a copy while FileExplorer is closed](images/screenshots/pc-background-copy-recovery-9adc20048bda.png)](images/screenshots/pc-background-copy-recovery-9adc20048bda.png) | [![Both legends hidden](images/screenshots/pc-hidden-legends-3eab97e66213.png)](images/screenshots/pc-hidden-legends-3eab97e66213.png) |
+
+
 These captures show the installed plugin on a SteamOS PC, using demonstration files.
 
 ![Select folders in one panel and copy them to the other with native controller controls](images/screenshots/01-two-panels-c446ee4897f4.png)
 
 | Browse archives like folders | Edit configuration files |
 | --- | --- |
-| [![Select individual profiles inside a ZIP archive](images/screenshots/02-archive-browsing-63332a829c46.png)](images/screenshots/02-archive-browsing-63332a829c46.png) | [![Text editor with indentation, line numbers and an active line](images/screenshots/03-text-editor-d668bc2ac194.png)](images/screenshots/03-text-editor-d668bc2ac194.png) |
+| [![Select individual profiles inside a ZIP archive](images/screenshots/02-archive-browsing-63332a829c46.png)](images/screenshots/02-archive-browsing-63332a829c46.png) | [![Text editor with indentation, line numbers and an active line](images/screenshots/pc-text-editor-69a07dff4a63.png)](images/screenshots/pc-text-editor-69a07dff4a63.png) |
 | Open an archive with **A**, select with **X**, extract with **Y**. | Keep indentation, blank lines, encoding and line endings. |
 
 | Keep the edited line visible | Watch progress and speed |
 | --- | --- |
-| [![Edited line above Steam's on-screen keyboard](images/screenshots/04-keyboard-34fba006255f.png)](images/screenshots/04-keyboard-34fba006255f.png) | [![Copy operation showing percentage, size and transfer speed](images/screenshots/05-copy-progress-574110153ac8.png)](images/screenshots/05-copy-progress-574110153ac8.png) |
+| [![Edited line above Steam's on-screen keyboard](images/screenshots/pc-keyboard-5a4fc1f455bf.png)](images/screenshots/pc-keyboard-5a4fc1f455bf.png) | [![Copy operation showing percentage, size and transfer speed](images/screenshots/05-copy-progress-574110153ac8.png)](images/screenshots/05-copy-progress-574110153ac8.png) |
 | Make changes with the controller and Steam's keyboard. | See how much has copied and how fast it is moving. |
 
 | Close the panel and carry on | Add a network share |
@@ -74,7 +113,7 @@ These captures show the installed plugin on a SteamOS PC, using demonstration fi
 
 | Make it your own | Select and copy text |
 | --- | --- |
-| [![Appearance settings in the Decky sidebar](images/screenshots/11-appearance-settings-7c09f0487bdf.png)](images/screenshots/11-appearance-settings-7c09f0487bdf.png) | [![Several text lines selected with the controller](images/screenshots/12-text-selection-2b7cce3b86f0.png)](images/screenshots/12-text-selection-2b7cce3b86f0.png) |
+| [![Appearance settings in the Decky sidebar](images/screenshots/11-appearance-settings-7c09f0487bdf.png)](images/screenshots/11-appearance-settings-7c09f0487bdf.png) | [![Several text lines selected with the controller](images/screenshots/pc-text-selection-b0988bb31efc.png)](images/screenshots/pc-text-selection-b0988bb31efc.png) |
 | Choose an accent color, background opacity and text size. | Hold **RT/R2 + directions**, copy with **View/Select**, paste with Steam's keyboard. |
 
 | Open pictures without leaving Gaming Mode | Preview images inside an archive |
@@ -96,13 +135,24 @@ These captures show the installed plugin on a SteamOS PC, using demonstration fi
 <details>
 <summary><strong>Handheld</strong></summary>
 
+### Media, recovery and optional controls
+
+| Audio and video player | Embedded audio cover |
+| --- | --- |
+| [![Audio and video player](images/screenshots/handheld-media-video-31619e6726cf.png)](images/screenshots/handheld-media-video-31619e6726cf.png) | [![Embedded audio cover](images/screenshots/handheld-media-audio-cover-467c85dcd598.png)](images/screenshots/handheld-media-audio-cover-467c85dcd598.png) |
+
+| Recover a copy while FileExplorer is closed | Both legends hidden |
+| --- | --- |
+| [![Recover a copy while FileExplorer is closed](images/screenshots/handheld-background-copy-recovery-6deea8398b9c.png)](images/screenshots/handheld-background-copy-recovery-6deea8398b9c.png) | [![Both legends hidden](images/screenshots/handheld-hidden-legends-71446564d09c.png)](images/screenshots/handheld-hidden-legends-71446564d09c.png) |
+
+
 These captures come from a **ROG Ally running SteamOS**. Browse the
 [handheld gallery](docs/wiki/Handheld-Gallery.md) for archives, text selection,
 images, network discovery and settings.
 
 | Full window with two panels | More text above the keyboard |
 | --- | --- |
-| [![Handheld file manager at default scale](images/screenshots/handheld-01-two-panels-c2e9c0a15101.png)](images/screenshots/handheld-01-two-panels-c2e9c0a15101.png) | [![Editor at 80 percent scale with toolbar hidden](images/screenshots/handheld-16-scaled-keyboard-e93ef9e92a7a.png)](images/screenshots/handheld-16-scaled-keyboard-e93ef9e92a7a.png) |
+| [![Handheld file manager at default scale](images/screenshots/handheld-01-two-panels-c2e9c0a15101.png)](images/screenshots/handheld-01-two-panels-c2e9c0a15101.png) | [![Editor at 80 percent scale with toolbar hidden](images/screenshots/handheld-scaled-keyboard-9542e7a3a971.png)](images/screenshots/handheld-scaled-keyboard-9542e7a3a971.png) |
 | The window fills Steam's available space. | Choose **80% Interface scale** and press **L3** to hide the toolbar. |
 
 </details>
@@ -114,7 +164,7 @@ Steam renders the matching glyphs for the active controller. The names below use
 | Button | Action |
 | --- | --- |
 | D-pad / left stick | Navigate files and buttons |
-| A | Open a folder, archive, text editor or image; confirm |
+| A | Open a supported folder, archive, text file, image, audio or video; confirm |
 | B | Parent folder; close at the filesystem/share root |
 | X | Select or deselect the focused item |
 | Y | Copy the selection; inside an archive, extract selected contents |

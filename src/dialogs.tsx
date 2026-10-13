@@ -1,4 +1,4 @@
-import { DialogButton, Focusable, ModalRoot, TextField, ToggleField, showModal } from '@decky/ui';
+import { DialogButton, Focusable, ModalRoot, NavEntryPositionPreferences, TextField, ToggleField, showModal } from '@decky/ui';
 import { useState } from 'react';
 import { api, message, Place } from './api';
 import { css } from './style';
@@ -53,6 +53,23 @@ export function MenuDialog({ title, actions, closeModal }: { title: string; acti
   return <ModalRoot onCancel={closeModal} closeModal={closeModal}><style>{css}</style><Focusable className="fe-dialog" flow-children="column"><h2>{title}</h2><Focusable className="fe-stack" flow-children="column">
     {actions.map(a => <DialogButton key={a.label} disabled={a.disabled} onClick={() => { closeModal?.(); a.run(); }}>{a.label}</DialogButton>)}
   </Focusable></Focusable></ModalRoot>;
+}
+
+export function RecoveryDialog({ error, resume, restart, closeModal, openExplorer }: { error: string; resume: () => Promise<void>; restart: () => void; closeModal?: () => void; openExplorer?: () => void }) {
+  const [failure, setFailure] = useState(''), [busy, setBusy] = useState(false);
+  return <ModalRoot onCancel={closeModal} closeModal={closeModal}><style>{css}</style><Focusable className="fe-dialog" flow-children="column">
+    <h2>Copy interrupted</h2><p className="fe-description">{error}</p><p className="fe-description">Resume verifies saved data and continues the partial file. Start again copies everything into a new retry folder. Previous results are kept.</p><ErrorText text={failure} />
+    <Focusable className="fe-recovery-actions" flow-children="column">
+      <Focusable className="fe-actions" flow-children="row" navEntryPreferPosition={NavEntryPositionPreferences.MAINTAIN_X}>
+        <DialogButton disabled={busy} onClick={async () => { setBusy(true); try { await resume(); closeModal?.(); } catch (e) { setFailure(message(e)); setBusy(false); } }}>Resume</DialogButton>
+        <DialogButton disabled={busy} onClick={() => { closeModal?.(); restart(); }}>Start again…</DialogButton>
+      </Focusable>
+      <Focusable className="fe-actions" flow-children="row" navEntryPreferPosition={NavEntryPositionPreferences.MAINTAIN_X}>
+        <DialogButton onClick={closeModal}>{openExplorer ? 'Cancel' : 'Later'}</DialogButton>
+        {openExplorer && <DialogButton disabled={busy} onClick={() => { closeModal?.(); openExplorer(); }}>Open FileExplorer</DialogButton>}
+      </Focusable>
+    </Focusable>
+  </Focusable></ModalRoot>;
 }
 
 export function PreviewDialog({ name, text, closeModal }: { name: string; text: string; closeModal?: () => void }) {

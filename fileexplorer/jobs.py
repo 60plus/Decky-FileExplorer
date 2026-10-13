@@ -66,12 +66,30 @@ class Jobs:
                 (folder / 'request.json').unlink(missing_ok=True)
         return state
 
-    def start(self, action, sources, destination=None):
+    def retry(self, job_id, mode):
+        if mode not in ('resume', 'restart'): raise ValueError('Choose Resume or Start again.')
+        return self.start('copy', [], retry_id=job_id, retry_mode=mode)
+
+    def start(self, action, sources, destination=None, retry_id=None, retry_mode=None):
         import fcntl
         with self.lock, (self.root / 'manager.lock').open('a') as lockfile:
             fcntl.flock(lockfile, fcntl.LOCK_EX)
             current = self.state()
             if current and current['status'] == 'running': raise ValueError('Another operation is already running')
+            retry_folder = None
+            if retry_id:
+                if not current or current['id'] != retry_id or current['status'] not in ('error', 'cancelled') or not current.get('recoverable'):
+                    raise ValueError('This operation is no longer available to resume.')
+                retry_folder = self.current_dir()
+                plan = json.loads((retry_folder / 'plan.json').read_text())
+                action, sources, destination = plan['action'], plan['sources'], plan['destination']
+                if retry_mode == 'restart':
+                    from .vfs import VFS, join
+                    fs = VFS(self.service.profiles())
+                    try:
+                        destination = join(destination, 'FileExplorer retry ' + time.strftime('%Y-%m-%d %H-%M-%S') + '-' + uuid.uuid4().hex[:6])
+                        fs.mkdir(destination)
+                    finally: fs.close()
             sources = self.service.validate_job(action, sources, destination)
             job_id = uuid.uuid4().hex
             folder = self.root / job_id
@@ -91,13 +109,19 @@ class Jobs:
             profiles = {key: profiles[key] for key in used}
             request = dict(action=action, sources=sources, destination=destination, home=self.service.home,
                            settings=copy.deepcopy(self.service.config['settings']), connections=profiles)
+            recoverable = action == 'copy' and not any(archive.is_location(p) for p in sources)
+            request['recoverable'] = recoverable
+            atomic_json(folder / 'plan.json', dict(action=action, sources=sources, destination=destination))
+            if retry_folder and retry_mode == 'resume' and (retry_folder / 'copy.jsonl').exists():
+                shutil.copyfile(retry_folder / 'copy.jsonl', folder / 'copy.jsonl')
+                os.chmod(folder / 'copy.jsonl', 0o600)
             atomic_json(folder / 'request.json', request)
             label = Path(split(archive.parse(sources[0])[0] if archive.is_location(sources[0]) else sources[0])[1]).name if sources else 'Trash'
             if len(sources) > 1: label += f' + {len(sources) - 1} item(s)'
             state = dict(id=job_id, action=action, kind='extract' if action == 'extract' or any(archive.is_location(p) for p in sources) else action,
                          label=label, status='running', phase='Starting background service', current='', error='', bytes=0,
                          total_bytes=0, work_bytes=0, total_work=0, speed=0, percent=0, completed=0,
-                         total=len(sources) or 1, outputs=[], events=[], updated=time.time(), background=True)
+                         total=len(sources) or 1, outputs=[], events=[], updated=time.time(), background=True, recoverable=recoverable)
             atomic_json(folder / 'state.json', state)
             atomic_json(self.root / 'current.json', {'id': job_id})
             command = ['systemd-run', '--user', '--quiet', '--collect', '--service-type=exec',
@@ -123,9 +147,10 @@ class Jobs:
                 if state['status'] != 'running': shutil.rmtree(folder)
             except FileNotFoundError: pass
 
-    def cancel(self):
+    def cancel(self, job_id=None):
         folder = self.current_dir()
         state = self.state()
+        if job_id and state and state['id'] != job_id: raise ValueError('This operation has already finished.')
         if folder and state and state['status'] == 'running': (folder / 'cancel').touch(mode=0o600)
         return True
 
@@ -141,4 +166,4 @@ class Jobs:
             pending = [e for e in events if e not in acknowledged]
             if pending: atomic_json(folder / 'notified.json', list(acknowledged | set(pending)))
             return [] if visible else [dict(id=state['id'], kind=state['kind'], label=state['label'], milestone=e,
-                                           error=state['error']) for e in pending]
+                                           error=state['error'], recoverable=state.get('recoverable', False)) for e in pending]

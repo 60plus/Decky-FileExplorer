@@ -30,6 +30,13 @@ class BackendTests(unittest.TestCase):
         self.service.shutdown()
         self.temp.cleanup()
 
+    def test_resumable_remote_copy_progress_reaches_all_thresholds(self):
+        self.service.copy_resume = object()
+        self.service.job = {}
+        with patch.object(self.service, '_estimate_tree', return_value=100):
+            self.service._plan(None, 'copy', ['smb://one/source'], 'smb://two/target')
+        self.assertEqual(self.service.job['total_work'], 100)
+
     def test_appearance_persists_and_rejects_invalid_values(self):
         desired = dict(accent='violet', opacity=85, text_size=18, ui_scale=80)
         self.service.update_settings(desired)
@@ -113,6 +120,14 @@ class BackendTests(unittest.TestCase):
             if os.name == 'posix': self.assertEqual(os.stat(s.config_file).st_mode & 0o777, 0o600)
         finally: s.shutdown()
 
+    def test_legend_modes_persist_and_reject_unknown_values(self):
+        for mode in ('panel', 'steam', 'both', 'none'):
+            self.service.update_settings({'legend_mode': mode})
+            fresh = Service(self.home, self.root / 'settings')
+            try: self.assertEqual(fresh.state()['settings']['legend_mode'], mode)
+            finally: fresh.shutdown()
+        with self.assertRaises(ValueError): self.service.update_settings({'legend_mode': 'broken'})
+
     @unittest.skipUnless(os.name == 'posix', 'System libarchive required')
     def test_zip_and_tar_extract(self):
         z = self.left / 'bundle.zip'
@@ -125,6 +140,21 @@ class BackendTests(unittest.TestCase):
             info = tarfile.TarInfo('a.txt'); info.size = 4; f.addfile(info, io.BytesIO(b'test'))
         self.assertEqual(self.job('extract', [t], self.right)['status'], 'done')
         self.assertEqual((self.right / 'compressed/a.txt').read_bytes(), b'test')
+
+    @unittest.skipUnless(os.name == 'posix', 'System libarchive required')
+    def test_single_compressed_streams_browse_extract_and_enforce_limit(self):
+        import gzip, bz2, lzma
+        payload = b'Plain compressed text\n' * 100
+        for suffix, compress in [('gz', gzip.compress), ('bz2', bz2.compress), ('xz', lzma.compress)]:
+            source = self.left / ('payload.' + suffix); source.write_bytes(compress(payload))
+            listing = self.service.list_dir(archive.location(str(source)))
+            self.assertEqual([(e['name'], e['size']) for e in listing['entries']], [('data', len(payload))])
+            target = self.right / suffix; target.mkdir()
+            self.assertEqual(self.job('copy', [archive.location(str(source), 'data')], target)['status'], 'done')
+            self.assertEqual((target / 'data').read_bytes(), payload)
+            with self.assertRaisesRegex(ValueError, 'size limit'): archive.manifest(source, limit=100)
+        fake = self.left / 'fake.rar'; fake.write_bytes(b'This is not an archive')
+        with self.assertRaises(ValueError): archive.manifest(fake)
 
     @unittest.skipUnless(os.name == 'posix', 'System libarchive required')
     def test_archive_traversal_rejected(self):

@@ -12,6 +12,8 @@ import { accents, appearanceStyle, defaultAppearance } from './appearance';
 import authorLogo from '../images/logo60plus.png';
 import { version } from '../package.json';
 
+const legendModes = ['panel', 'steam', 'both', 'none'];
+const legendLabels = ['Panel only', 'Steam bar only', 'Both', 'Hidden'];
 const extractionLimits = [10, 50, 100, 500, 0];
 
 function Setting({ name, help, children }: { name: string; help: string; children: ReactNode }) {
@@ -79,6 +81,7 @@ function SettingsPanel({ back, focusExtraction = false }: { back: () => void; fo
       <Setting name="Panel opacity" help="Change the background opacity. Text and icons stay fully visible. Reopen FileExplorer to apply."><SliderField label="Panel opacity" layout="below" value={state.settings.opacity} min={70} max={100} step={15} notchCount={3} notchTicksVisible showValue valueSuffix="%" onChange={value => void change({ opacity: Math.round(value) })} /></Setting>
       <Setting name="Interface scale" help="Smaller controls fit more content in the same window. Applies to the file manager, editor and image viewer after reopening. 100% is the default."><SliderField label="Interface scale" layout="below" value={state.settings.ui_scale ?? 100} min={70} max={100} step={10} notchCount={4} notchTicksVisible showValue valueSuffix="%" onChange={value => void change({ ui_scale: Math.round(value) })} /></Setting>
       <Setting name="Text size" help="Change the size of file names and editor text separately from the overall interface scale."><DropdownItem label="Text size" rgOptions={[{ data: 12, label: 'Small' }, { data: 14, label: 'Default' }, { data: 16, label: 'Large' }, { data: 18, label: 'Extra large' }]} selectedOption={state.settings.text_size} onChange={o => void change({ text_size: o.data })} /></Setting>
+      <Setting name="Controller legend" help="Show matching controller hints on the FileExplorer panel, on Steam's bottom bar, on both, or hide both. Reopen FileExplorer to apply."><SliderField label={<span className="fe-slider-label">Controller legend <b>{legendLabels[Math.max(0, legendModes.indexOf(state.settings.legend_mode || 'both'))]}</b></span>} layout="below" value={Math.max(0, legendModes.indexOf(state.settings.legend_mode || 'both'))} min={0} max={3} step={1} notchCount={4} notchTicksVisible showValue={false} onChange={value => void change({ legend_mode: legendModes[Math.round(value)] })} /></Setting>
       <div className="fe-settings-actions">
       <Setting name="Reset appearance" help="Restore the default accent color, opacity, interface scale and text size. Folder, network and transfer settings stay unchanged."><DialogButton onClick={() => void change(defaultAppearance)}>Reset appearance</DialogButton></Setting>
       <Setting name="Empty Trash" help="Empty the shared SteamOS Trash, including files trashed in Desktop Mode. A confirmation appears before anything is deleted."><DialogButton disabled={state.job?.status === 'running'} onClick={() => openDialog(<EmptyTrashDialog submit={async () => { await api('start', { action: 'empty_trash', sources: [] }); await refresh(); }} />)}>Empty Trash…</DialogButton></Setting>
@@ -108,6 +111,11 @@ function navigateSidebar(page: SidebarPage, focusExtraction = false, homeFocus =
   for (const listener of sidebarListeners) listener();
 }
 
+function launchExplorer() {
+  navigateSidebar('home', false, 'launch'); Navigation.CloseSideMenus();
+  openDialog(<Explorer openSettings={() => { navigateSidebar('settings', true); Navigation.OpenQuickAccessMenu(QuickAccessTab.Decky); }} />);
+}
+
 function Content() {
   const { page, focusExtraction, homeFocus } = useSyncExternalStore(subscribeSidebar, () => sidebar);
   const home = useRef<HTMLDivElement>(null);
@@ -122,12 +130,11 @@ function Content() {
     return () => owner.clearTimeout(timer);
   }, [page, homeFocus]);
   const back = () => navigateSidebar('home', false, page);
-  const openExtractionSettings = () => { navigateSidebar('settings', true); Navigation.OpenQuickAccessMenu(QuickAccessTab.Decky); };
   return <Focusable noFocusRing onCancelActionDescription={page === 'home' ? undefined : 'Back'}
     onCancelButton={page === 'home' ? undefined : e => { e.preventDefault(); e.stopPropagation(); back(); }}>
     <style>{css}</style>{page === 'update' ? <UpdatePanel back={back} /> : page === 'settings' ? <SettingsPanel back={back} focusExtraction={focusExtraction} /> : page === 'about' ? <AboutPanel back={back} /> :
     <PanelSection><div ref={home} className="fe-panel-stack">
-      <PanelSectionRow><DialogButton data-page="launch" onClick={() => { navigateSidebar('home', false, 'launch'); Navigation.CloseSideMenus(); openDialog(<Explorer openSettings={openExtractionSettings} />); }}>Launch FileExplorer</DialogButton></PanelSectionRow>
+      <PanelSectionRow><DialogButton data-page="launch" onClick={launchExplorer}>Launch FileExplorer</DialogButton></PanelSectionRow>
       <PanelSectionRow><DialogButton data-page="settings" onClick={() => navigateSidebar('settings')}>Settings</DialogButton></PanelSectionRow>
       <PanelSectionRow><DialogButton data-page="update" onClick={() => navigateSidebar('update')}>Update</DialogButton></PanelSectionRow>
       <PanelSectionRow><DialogButton data-page="about" onClick={() => navigateSidebar('about')}>About</DialogButton></PanelSectionRow>
@@ -135,6 +142,6 @@ function Content() {
 }
 
 export default definePlugin(() => {
-  const stopNotifications = startNotifications();
+  const stopNotifications = startNotifications(launchExplorer);
   return { name: 'FileExplorer', titleView: <div className={staticClasses.Title}>FileExplorer</div>, content: <Content />, icon: <Icon />, onDismount: () => { stopNotifications(); closeAllDialogs(); } };
 });

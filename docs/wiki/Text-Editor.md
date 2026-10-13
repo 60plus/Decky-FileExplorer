@@ -2,19 +2,23 @@
 
 # Text editor
 
-Edit small text files such as **TXT, CFG, INI, JSON, XML and scripts** directly in
+Edit small text files such as **TXT, CFG, INI, JSON, YAML, TOML, XML, Markdown, CSV, subtitles, source code and scripts** directly in
 Gaming Mode. The editor works with local files and direct SMB shares. It edits
 text lines without automatically formatting or rewriting the document structure.
 
+Extensionless names such as README, LICENSE, Makefile and Dockerfile, plus common dot configuration files, are recognized too. For another text extension, choose **Options → Edit file**. Recognition does not execute scripts or render HTML. The editor still checks the contents and refuses binary data.
+
 ## Edit text above the keyboard
 
-1. Focus a text file and press **A**, or choose **Options → Edit text file**.
+1. Focus a text file and press **A**, or choose **Options → Edit file**.
 2. Move up or down to the line you want. Left and right move the cursor.
 3. Press **A** to edit the document with Steam's on-screen keyboard.
 4. Hide the keyboard to return to the editor's cursor and selection controls.
 5. Press **Y** or choose **Save file** to write the file.
 
-![Text editor with line numbers, active line and file encoding](../../images/screenshots/03-text-editor-d668bc2ac194.png)
+| SteamOS PC | SteamOS handheld |
+| --- | --- |
+| [![Text editor on PC](../../images/screenshots/pc-text-editor-69a07dff4a63.png)](../../images/screenshots/pc-text-editor-69a07dff4a63.png) | [![Text editor on handheld](../../images/screenshots/handheld-text-editor-04b6c7229072.png)](../../images/screenshots/handheld-text-editor-04b6c7229072.png) |
 
 The **whole editor panel shrinks above Steam's keyboard**, keeping the toolbar,
 active line, nearby text and status visible. The text scrolls as the cursor moves.
@@ -23,9 +27,12 @@ There is no separate line-editing popup. You can edit and paste multiple lines.
 On handhelds, **L3** hides the toolbar to show more lines, even while the keyboard
 is open. Press L3 again to show it; **R3** reveals and focuses it. For smaller
 controls in the same window, change **Interface scale** in Settings and reopen
-the editor. See the [handheld examples](Handheld-Gallery.md).
+the editor. See the [handheld guide](Handheld-Guide.md)
+and [scaling examples](Handheld-Gallery.md#smaller-controls-in-the-same-window).
 
-![Complete editor panel above Steam's on-screen keyboard](../../images/screenshots/04-keyboard-34fba006255f.png)
+| SteamOS PC | SteamOS handheld |
+| --- | --- |
+| [![Editor above Steam keyboard on PC](../../images/screenshots/pc-keyboard-5a4fc1f455bf.png)](../../images/screenshots/pc-keyboard-5a4fc1f455bf.png) | [![Editor above Steam keyboard on handheld](../../images/screenshots/handheld-keyboard-e9da23428780.png)](../../images/screenshots/handheld-keyboard-e9da23428780.png) |
 
 ## Select, copy and paste
 
@@ -34,7 +41,9 @@ the selection. You can select part of a line or continue across several lines.
 Release the trigger to keep the selection, then press **View / Select** or choose
 **Copy text**. If nothing is selected, Copy text copies the current line.
 
-![Selecting several text lines with controller controls](../../images/screenshots/12-text-selection-2b7cce3b86f0.png)
+| SteamOS PC | SteamOS handheld |
+| --- | --- |
+| [![Controller text selection on PC](../../images/screenshots/pc-text-selection-b0988bb31efc.png)](../../images/screenshots/pc-text-selection-b0988bb31efc.png) | [![Controller text selection on handheld](../../images/screenshots/handheld-text-selection-26ef16443cd7.png)](../../images/screenshots/handheld-text-selection-26ef16443cd7.png) |
 
 Move to the destination, press **A** and use **Paste** on Steam's keyboard.
 Pasting replaces selected text or inserts at the cursor. FileExplorer uses the

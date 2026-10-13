@@ -1,30 +1,35 @@
 import { DialogButton, Focusable, GamepadButton, GamepadEvent, ModalRoot, getFocusNavController } from '@decky/ui';
 import { useEffect, useRef, useState } from 'react';
 import { api, bytes, Entry, Job, Listing, message, Place, State } from './api';
-import { ConfirmDialog, EmptyTrashDialog, ExtractionLimitDialog, MenuDialog, openDialog, PlacesDialog, PreviewDialog, TextDialog } from './dialogs';
+import { ConfirmDialog, EmptyTrashDialog, ExtractionLimitDialog, MenuDialog, openDialog, PlacesDialog, PreviewDialog, RecoveryDialog, TextDialog } from './dialogs';
 import { Editor } from './Editor';
-import { ImageViewer, isImage } from './ImageViewer';
+import { ImageViewer } from './ImageViewer';
+import { MediaPlayer } from './MediaPlayer';
+import { isArchive, openKind } from './fileTypes';
 import { explorerClosed, explorerOpened } from './activity';
 import { FileIcon, Icon } from './Icon';
 import { css } from './style';
 import { appearanceStyle, useModalStyle } from './appearance';
-import { Glyph } from './Glyph';
+import { Legend } from './Legend';
 import { version } from '../package.json';
 
 type Pane = { data: Listing | null; loading: boolean; error: string; selected: Set<string>; focused: string };
 const empty = (): Pane => ({ data: null, loading: true, error: '', selected: new Set(), focused: '' });
-const isArchive = (name: string) => /\.(zip|rar|7z|tar|gz|bz2|xz|tgz)$/i.test(name);
 function consume(e: Event) { e.preventDefault(); e.stopPropagation(); }
 let shownLimitJob: string | undefined;
+let shownRecoveryJob: string | undefined;
 
 export function Explorer({ closeModal, openSettings }: { closeModal?: () => void; openSettings: () => void }) {
   const [panes, setPanes] = useState<[Pane, Pane]>([empty(), empty()]);
   const [active, setActive] = useState(0), [job, setJob] = useState<Job | null>(null), [error, setError] = useState('');
   const [state, setState] = useState<State | null>(null), [busyAction, setBusyAction] = useState(false);
+  const [recovery, setRecovery] = useState<Job | null>(null);
   const root = useRef<HTMLDivElement>(null), generations = useRef([0, 0]), alive = useRef(true);
   useModalStyle(root, appearanceStyle(state?.settings));
   const snapshot = useRef({ panes, active, state, job }); snapshot.current = { panes, active, state, job };
   const running = job?.status === 'running';
+  const focusedEntry = panes[active].data?.entries.find(e => e.path === panes[active].focused);
+  const canOpen = !focusedEntry || !!openKind(focusedEntry);
 
   function patch(index: number, update: Partial<Pane> | ((p: Pane) => Partial<Pane>)) {
     setPanes(prev => prev.map((p, i) => i === index ? { ...p, ...(typeof update === 'function' ? update(p) : update) } : p) as [Pane, Pane]);
@@ -47,7 +52,7 @@ export function Explorer({ closeModal, openSettings }: { closeModal?: () => void
   useEffect(() => {
     explorerOpened();
     alive.current = true;
-    void api<State>('state').then(s => { if (!alive.current) return; setState(s); setJob(s.job?.status === 'running' ? s.job : null); void load(0, s.settings.left); void load(1, s.settings.right); }).catch(e => setError(message(e)));
+    void api<State>('state').then(s => { if (!alive.current) return; setState(s); setJob(s.job?.status === 'running' ? s.job : null); if (s.job?.recoverable && ['error', 'cancelled'].includes(s.job.status)) setRecovery(s.job); void load(0, s.settings.left); void load(1, s.settings.right); }).catch(e => setError(message(e)));
     return () => { alive.current = false; explorerClosed(); };
   }, []);
   useEffect(() => {
@@ -67,16 +72,45 @@ export function Explorer({ closeModal, openSettings }: { closeModal?: () => void
     return () => window.clearTimeout(timer);
   }, [job?.id, job?.status]);
   useEffect(() => {
+    if (!job?.recoverable || !['error', 'cancelled'].includes(job.status)) return;
+    setRecovery(job);
+    if (job.status === 'error' && shownRecoveryJob !== job.id) { shownRecoveryJob = job.id; showRecovery(job); }
+  }, [job?.id, job?.status]);
+
+  async function retry(job: Job, mode: string) {
+    const next = await api<Job>('retry', { job_id: job.id, mode });
+    setJob(next); setRecovery(null); setError('');
+  }
+  function restart(job: Job) {
+    openDialog(<ConfirmDialog title="Start the copy again?" description="All selected items will be copied from the beginning into a new FileExplorer retry folder in the original destination. Existing files and previous partial copies will be kept." action="Start again" submit={() => retry(job, 'restart')} />);
+  }
+  function showRecovery(job: Job) {
+    openDialog(<RecoveryDialog error={job.error} resume={() => retry(job, 'resume')} restart={() => restart(job)} />);
+  }
+  function cancelCopy() {
+    if (!job || !running) return;
+    const id = job.id;
+    openDialog(<ConfirmDialog title="Cancel this operation?" description={job.recoverable ? 'The copy will stop. Completed files and partial data will be kept so you can resume from Options.' : 'The operation will stop. Completed items will be kept.'} action="Cancel operation" submit={async () => { await api('cancel', { job_id: id }); }} />);
+  }
+  useEffect(() => {
     if (job?.status !== 'error' || !job.error.includes('exceeds extraction size limit (') || shownLimitJob === job.id) return;
     shownLimitJob = job.id;
     openDialog(<ExtractionLimitDialog description={job.error} openSettings={() => { closeModal?.(); openSettings(); }} />);
   }, [job?.id, job?.status]);
 
-  function focusPane(index: number) {
+  function focusPane(index: number, explicit = false) {
     setActive(index);
     window.setTimeout(() => {
       const node = root.current?.querySelector<HTMLElement>(`.fe-pane[data-pane="${index}"] .fe-row[data-current="true"]`) || root.current?.querySelector<HTMLElement>(`.fe-pane[data-pane="${index}"] .fe-row`);
       if (node) {
+        if (explicit) {
+          // Use the target window's native focus request. Steam can keep its
+          // active navigation tree in a different CEF context from this modal.
+          const owner = node.ownerDocument.defaultView;
+          if (owner) node.dispatchEvent(new owner.CustomEvent('vgp_requestfocus', { bubbles: true, cancelable: true, detail: { button: 1, source: 0 } }));
+          node.scrollIntoView({ block: 'nearest' });
+          return;
+        }
         const controller = getFocusNavController();
         const findNode = (n: any): any => {
           if (!n) return undefined;
@@ -109,7 +143,7 @@ export function Explorer({ closeModal, openSettings }: { closeModal?: () => void
   }
   async function start(action: string, chosen: string[], destination?: string) {
     const next = await api<Job>('start', { action, sources: chosen, destination });
-    setJob(next); setError('');
+    setJob(next); setRecovery(null); setError('');
   }
   function copy() {
     const chosen = sources(), dest = panes[1 - active].data?.path;
@@ -135,10 +169,11 @@ export function Explorer({ closeModal, openSettings }: { closeModal?: () => void
     const folder = panes[active].data?.path, dest = panes[1 - active].data?.path;
     const readOnly = !!panes[active].data?.archive, targetReadOnly = !!panes[1 - active].data?.archive;
     openDialog(<MenuDialog title={chosen.length > 1 ? `${chosen.length} items selected` : current?.name || 'Folder options'} actions={[
+      ...(recovery ? [{ label: 'Resume interrupted copy…', disabled: running, run: () => showRecovery(recovery) }, { label: 'Start interrupted copy again…', disabled: running, run: () => restart(recovery) }] : []),
       { label: readOnly ? 'Extract selected to other panel' : 'Copy to other panel', run: copy, disabled: !chosen.length || running || targetReadOnly },
       { label: 'Extract whole archive to other panel', disabled: readOnly || targetReadOnly || !current || !isArchive(current.name) || chosen.length !== 1 || !dest || running, run: () => openDialog(<ConfirmDialog title="Extract archive?" description={`Create a new folder in:\n${displayPath(dest!)}\n\nZIP, RAR, 7z and TAR are supported. Links and unsafe paths are rejected.`} action="Extract" submit={() => start('extract', chosen, dest)} />) },
       { label: 'Rename', disabled: readOnly || chosen.length !== 1 || running, run: () => openDialog(<TextDialog title="Rename" initial={current?.name} submit={async name => { await api('rename', { location: chosen[0], name }); refresh(); }} />) },
-      { label: 'Edit text file', disabled: readOnly || chosen.length !== 1 || !current || current.directory || current.link, run: () => openDialog(<Editor location={chosen[0]} saved={refresh} />) },
+      { label: 'Edit file', disabled: readOnly || chosen.length !== 1 || !current || current.directory || current.link, run: () => openDialog(<Editor location={chosen[0]} saved={refresh} />) },
       { label: chosen[0]?.startsWith('smb://') ? 'Delete permanently…' : 'Move to Trash…', disabled: readOnly || !chosen.length || running, run: () => openDialog(<ConfirmDialog title={chosen[0]?.startsWith('smb://') ? 'Permanently delete?' : 'Move to Trash?'} description={`${chosen.length} item(s):\n${chosen.slice(0, 5).map(p => p.startsWith('smb://') ? decodeURIComponent(p.split('/').pop() || p) : p.split('/').pop()).join('\n')}${chosen.length > 5 ? '\n…' : ''}\n\n${chosen[0]?.startsWith('smb://') ? 'This cannot be undone.' : 'Restore from Trash in Desktop Mode. If Trash is unavailable, the operation stops.'}`} action={chosen[0]?.startsWith('smb://') ? 'Delete permanently' : 'Move to Trash'} submit={() => start(chosen[0]?.startsWith('smb://') ? 'delete' : 'trash', chosen)} />) },
       { label: 'New folder', disabled: readOnly || !folder || running, run: () => openDialog(<TextDialog title="New folder" submit={async name => { await api('mkdir', { location: folder, name }); refresh(); }} />) },
       { label: panes[active].selected.size ? 'Clear selection' : 'Select all', run: () => patch(active, { selected: panes[active].selected.size ? new Set() : new Set(panes[active].data?.entries.map(e => e.path)) }) },
@@ -149,10 +184,13 @@ export function Explorer({ closeModal, openSettings }: { closeModal?: () => void
     ]} />);
   }
   async function open(entry: Entry, index: number) {
+    const kind = openKind(entry);
+    if (!kind) return;
     if (entry.directory) { await load(index, entry.path); return; }
     setBusyAction(true);
     try {
-      if (isImage(entry.name) && !entry.link) { openDialog(<ImageViewer entries={panes[index].data?.entries || [entry]} selected={entry.path} folder={displayPath(panes[index].data?.path || '')} />); return; }
+      if (kind === 'image') { openDialog(<ImageViewer entries={panes[index].data?.entries || [entry]} selected={entry.path} folder={displayPath(panes[index].data?.path || '')} />); return; }
+      if (kind === 'media') { openDialog(<MediaPlayer entries={panes[index].data?.entries || [entry]} selected={entry.path} />); return; }
       if (isArchive(entry.name)) { const result = await api<{ path: string }>('open_archive', { location: entry.path }); await load(index, result.path); return; }
       if (!entry.path.startsWith('archive://')) { openDialog(<Editor location={entry.path} saved={refresh} />); return; }
       const preview = await api<{ text: string | null; message: string }>('preview', { location: entry.path }); openDialog(<PreviewDialog name={entry.name} text={preview.text ?? preview.message} />);
@@ -160,15 +198,15 @@ export function Explorer({ closeModal, openSettings }: { closeModal?: () => void
     catch (e) { setError(message(e)); } finally { setBusyAction(false); }
   }
   const keydown = (e: GamepadEvent) => {
-    if (e.detail.button === GamepadButton.BUMPER_LEFT) { consume(e); focusPane(0); }
-    else if (e.detail.button === GamepadButton.BUMPER_RIGHT) { consume(e); focusPane(1); }
+    if (e.detail.button === GamepadButton.BUMPER_LEFT) { consume(e); focusPane(0, true); }
+    else if (e.detail.button === GamepadButton.BUMPER_RIGHT) { consume(e); focusPane(1, true); }
     else if (e.detail.button === GamepadButton.START) { consume(e); options(); }
     else if (e.detail.button === GamepadButton.SELECT) { consume(e); void locations(); }
   };
   return <ModalRoot onCancel={closeModal} closeModal={closeModal} bAllowFullSize bHideCloseIcon className="fe-modal" style={appearanceStyle(state?.settings)}>
     <style>{css}</style><Focusable className="fe-app" flow-children="column" ref={root} onButtonDown={keydown}
       onCancelButton={e => { consume(e); back(); }} onSecondaryButton={e => { consume(e); toggle(); }} onOptionsButton={e => { consume(e); copy(); }}
-      onOKActionDescription="Open" onCancelActionDescription="Back" onSecondaryActionDescription="Select" onOptionsActionDescription={panes[active].data?.archive ? 'Extract' : 'Copy'}
+      onOKActionDescription={canOpen ? 'Open' : undefined} onCancelActionDescription="Back" onSecondaryActionDescription="Select" onOptionsActionDescription={panes[active].data?.archive ? 'Extract' : 'Copy'}
       actionDescriptionMap={{ [GamepadButton.BUMPER_LEFT]: 'Left panel', [GamepadButton.BUMPER_RIGHT]: 'Right panel', [GamepadButton.START]: 'Options', [GamepadButton.SELECT]: 'Locations' }}>
       <header className="fe-header"><div className="fe-brand"><span style={{ color: '#69dce3' }}><Icon size={32} /></span><div>FileExplorer<div className="fe-subtitle">Two panels. One controller.</div></div></div><div style={{ color: '#8fa6bd', fontSize: 12 }}>{version}</div></header>
       <Focusable className="fe-toolbar" flow-children="row"><DialogButton className="fe-btn" disabled={busyAction} onClick={() => void locations()}>Locations</DialogButton>
@@ -191,7 +229,7 @@ export function Explorer({ closeModal, openSettings }: { closeModal?: () => void
               onFocus={() => { patch(index, { focused: entry.path }); setActive(index); }}
               onClick={() => { patch(index, { focused: entry.path }); setActive(index); }} onDoubleClick={() => { if (!pane.loading) void open(entry, index); }} onActivate={e => { consume(e); if (!pane.loading) void open(entry, index); }}>
               <span className="fe-check" onClick={e => { e.stopPropagation(); patch(index, p => { const s = new Set(p.selected); s.has(entry.path) ? s.delete(entry.path) : s.add(entry.path); return { selected: s, focused: entry.path }; }); setActive(index); }}>{pane.selected.has(entry.path) ? '✓' : ''}</span>
-              <FileIcon folder={entry.directory} archive={isArchive(entry.name)} /><span className="fe-name">{entry.name}{entry.link ? ' ↗' : ''}</span><span className="fe-size">{entry.directory ? 'Folder' : bytes(entry.size)}</span>
+              <FileIcon folder={entry.directory} name={entry.name} /><span className="fe-name">{entry.name}{entry.link ? ' ↗' : ''}</span><span className="fe-size">{entry.directory ? 'Folder' : bytes(entry.size)}</span>
             </Focusable>)}
             {!pane.error && pane.data?.entries.length === 0 && <div className="fe-muted">This folder is empty.</div>}
           </>}
@@ -199,10 +237,10 @@ export function Explorer({ closeModal, openSettings }: { closeModal?: () => void
         <div className="fe-pane-status"><span>{pane.loading ? 'Loading…' : pane.selected.size ? `${pane.selected.size} selected` : `${pane.data?.entries.length ?? 0} items`}</span><span>{pane.data?.archive ? 'Archive • read-only' : pane.data?.free != null ? `${bytes(pane.data.free)} free` : 'Network share'}</span></div>
       </div>)}</Focusable>
       <div className="fe-status"><span className={`fe-status-text${error || job?.status === 'error' ? ' fe-status-error' : ''}`} title={error || job?.error || job?.current}>
-        {error || (job ? `${job.status === 'running' ? `${job.phase} • ${job.percent}% • ${bytes(job.bytes)} / ${bytes(job.total_bytes)} • ${bytes(job.speed || 0)}/s • ${job.current.split('/').pop()}` : job.status === 'done' ? `Completed • ${job.completed} item(s) • ${bytes(job.bytes)}` : job.error}` : 'Select files, then copy them to the other panel.')}
-      </span>{running && <DialogButton className="fe-btn" onClick={() => void api('cancel').catch(e => setError(message(e)))}>Cancel</DialogButton>}</div>
+        {error || (job ? `${job.status === 'running' ? `${job.phase} • ${job.percent}% • ${bytes(job.bytes)} / ${bytes(job.total_bytes)} • ${bytes(job.speed || 0)}/s • ${job.current.split('/').pop()}` : job.status === 'done' ? `Completed • ${job.completed} item(s) • ${bytes(job.bytes)}` : job.error}` : canOpen ? 'Select files, then copy them to the other panel.' : 'No preview for this type. Use Options → Edit file to try opening it as text.')}
+      </span>{running && <DialogButton className="fe-btn" onClick={cancelCopy}>Cancel</DialogButton>}</div>
       {running && <div className="fe-progress"><div style={{ width: `${job?.percent || 0}%` }} /><span>You can close this window. The operation continues in the background.</span></div>}
-      <div className="fe-legend"><Glyph button={GamepadButton.OK} label="Open" /><Glyph button={GamepadButton.CANCEL} label="Back" /><Glyph button={GamepadButton.SECONDARY} label="Select" /><Glyph button={GamepadButton.OPTIONS} label={panes[active].data?.archive ? 'Extract' : 'Copy'} /><Glyph button={GamepadButton.BUMPER_LEFT} label="Left" /><Glyph button={GamepadButton.BUMPER_RIGHT} label="Right" /><Glyph button={GamepadButton.START} label="Options" /><Glyph button={GamepadButton.SELECT} label="Locations" /></div>
+      <Legend />
     </Focusable>
   </ModalRoot>;
 }

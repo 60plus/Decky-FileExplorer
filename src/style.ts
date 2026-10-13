@@ -40,12 +40,22 @@ export const css = `
 .fe-legend { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px 16px; padding:9px 14px 11px; background:#0c1725; border-top:1px solid #293b4e; font-size:11px; color:#a7bdce; }
 .fe-legend span { display:inline-flex; align-items:center; gap:5px; }
 .fe-legend img { width:20px; height:20px; object-fit:contain; }
+.fe-mirrored-legend:empty { display:none; }
+.fe-legend-glyph img,.fe-legend-glyph svg { width:auto!important; min-width:16px; max-width:42px; height:20px!important; margin:0!important; }
+html[data-fe-legend="steam"] .fe-legend,html[data-fe-legend="none"] .fe-legend { display:none; }
+html[data-fe-legend="panel"] #Footer,html[data-fe-legend="none"] #Footer { visibility:hidden!important; }
+/* Some Steam themes reserve less height than the glyphs need. Keep every row
+   inside the viewport, then reserve that measured height in the handheld frame. */
+html[data-fe-legend] #Footer { height:auto!important; }
 .fe-dialog { min-width:360px; max-width:620px; }
 .fe-dialog h2 { margin:0 0 14px; font-size:22px; }
 .fe-dialog .fe-stack { display:flex; flex-direction:column; gap:8px; }
 .fe-dialog > .fe-stack { max-height:65vh; overflow:auto; }
 .fe-dialog .fe-actions { display:flex; gap:10px; margin-top:16px; }
 .fe-dialog .fe-actions>* { flex:1; min-width:0!important; }
+.fe-recovery-actions { display:flex; flex-direction:column; gap:10px; margin-top:16px; }
+.fe-dialog .fe-recovery-actions .fe-actions { margin-top:0; }
+.fe-recovery-actions button { white-space:normal!important; overflow-wrap:anywhere; text-overflow:clip!important; height:auto!important; min-height:44px; line-height:20px!important; padding:10px 12px!important; }
 .fe-dialog .fe-description { color:#a9bccd; font-size:14px; white-space:pre-wrap; overflow-wrap:anywhere; margin:8px 0 16px; }
 .fe-dialog pre { white-space:pre-wrap; overflow-wrap:anywhere; max-height:45vh; overflow:auto; background:#0d1723; padding:12px; font-size:13px; }
 .fe-places { max-height:46vh; overflow:auto; }
@@ -114,10 +124,26 @@ export const css = `
 .fe-image-stage { flex:1; min-height:0; margin:12px 18px 0; display:flex; align-items:center; justify-content:center; overflow:hidden; border:1px solid #324457; border-radius:6px; background:repeating-conic-gradient(#162334 0% 25%,#1d2d40 0% 50%) 0 0 / 24px 24px; }
 .fe-image-stage img { width:100%; height:100%; object-fit:contain; min-height:0; }
 .fe-image-stage.gpfocus { outline:2px solid var(--fe-accent,#69dce3); }
+.fe-media-stage { flex:1; min-height:0; position:relative; margin:8px 18px 0; display:flex; align-items:center; justify-content:center; overflow:hidden; background:#080e17; border:1px solid #324457; border-radius:6px; }
+.fe-media-stage.gpfocus { border-color:var(--fe-accent); }
+.fe-media-stage video { width:100%; height:100%; min-height:0; object-fit:contain; }
+.fe-audio-art { height:85%; width:85%; min-height:0; display:flex; align-items:center; justify-content:center; }
+.fe-audio-art img { max-width:100%; max-height:100%; object-fit:contain; border-radius:8px; }
+.fe-speaker { height:70%; max-width:260px; color:var(--fe-accent); }
+.fe-media-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:24px; background:#080e17cc; }
+.fe-media-timeline { display:flex; align-items:center; flex-shrink:0; gap:12px; padding:8px 18px 0; color:#a4bdd0; font-size:12px; font-variant-numeric:tabular-nums; }
+.fe-media-track { flex:1; height:10px; border-radius:5px; background:#25364b; overflow:hidden; cursor:pointer; }
+.fe-media-track>div { height:100%; background:var(--fe-accent); }
+.fe-modal.fe-media-fullscreen { position:fixed!important; inset:0!important; width:100vw!important; max-width:100vw!important; height:100vh!important; max-height:100vh!important; margin:0!important; border-radius:0!important; z-index:10; box-sizing:border-box; padding-bottom:var(--fe-steam-footer-height,0px)!important; }
+.fe-media-expanded .fe-header { display:none; }
+.fe-media-expanded .fe-media-stage { margin:0; border:0; border-radius:0; }
+.fe-media-player .fe-toolbar { gap:4px; }
+.fe-media-player .fe-toolbar .fe-btn { padding:6px 3px!important; font-size:12px!important; }
 /* Fill Steam's safe modal frame on handhelds and short/scaled displays. The
    native frame already reserves the system header and controller footer. */
 @media (max-width:1300px), (max-height:650px) {
   :has(> .fe-modal) { padding:4px!important; }
+  html[data-fe-legend] :has(> .fe-modal) { bottom:var(--fe-steam-footer-height,40px)!important; }
   .fe-modal:not(.fe-keyboard-visible) { width:100%!important; max-width:100%!important; min-width:0!important; height:100%!important; max-height:100%!important; margin:0!important; box-sizing:border-box; border-radius:8px!important; }
   /* The keyboard uses a fixed-position modal, so its width is viewport-relative.
      Keep the same 4px side margins as the normal handheld modal frame. */

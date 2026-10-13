@@ -30,6 +30,21 @@ explicit operations such as list, connect, read text, save text and start a job.
 It runs without Decky's root flag, so access is limited to the Steam user's
 filesystem and share permissions.
 
+## PC and handheld layout
+
+PCs and handhelds use the same frontend and backend. The interface responds to
+Steam's available viewport: compact windows fill the space between the system
+header and controller footer, while large viewports use a centered panel.
+Interface scale changes the controls and content inside that space; text size
+is a separate setting.
+
+The editor tracks Steam's on-screen keyboard and keeps the active line visible
+above it. L3 hides the toolbar for more text space; R3 moves focus between content
+and toolbar. The optional panel legend mirrors Steam's active hints, so its labels,
+order and controller glyphs match the Steam bar. Hidden legends do not disable
+the controls, and their visibility changes are removed when FileExplorer closes.
+See the [handheld guide](Handheld-Guide.md) for the settings and examples.
+
 ## Background job lifecycle
 
 1. The backend validates the operation and refuses a second job while one runs.
@@ -48,22 +63,16 @@ under the plugin's settings directory. Reopening the UI or reloading the plugin
 reads that state instead of starting the transfer again. Older completed job
 directories are pruned as new jobs begin, keeping the most recent five.
 
-This persistence is a status record, not a restartable transfer journal. A reboot
-or stopped user session interrupts the worker. The manager detects a stale
-running state when its systemd service is no longer active and reports the stop;
-it does not automatically resume or restart the job.
+A reboot or stopped user session interrupts the worker. The manager detects a stale running state when its systemd service is no longer active. Copies additionally record an append-only checkpoint journal and a credential-free plan. The latest interrupted copy can be resumed explicitly; nothing resumes automatically. Extraction has no resume journal.
 
 ## Copy staging, speed and notifications
 
 The worker estimates the selected data before copying. Each top-level item is
 written under a temporary name in the destination and renamed only after that
 item is complete. Existing destination names are refused. On failure, earlier
-completed items remain; cleanup of a disconnected remote staging file may have
-to wait until the share is accessible again.
+completed items and resumable partial copies remain. Resume compares every saved byte with the source before appending, checks source size and modification time, and verifies completed-file hashes. Start again creates a separate destination folder and leaves previous output intact.
 
-SMB-to-SMB copying spools each file through local temporary storage. Selected
-archive extraction also stages its output locally before copying it to the final
-destination. Progress counts those work stages; speed is a recent rate of bytes
+Resumable SMB-to-SMB copies relay bounded chunks in memory. Selected archive extraction stages its output locally before copying it to the final destination. Progress counts those work stages; speed is a recent rate of bytes
 processed, rather than a promise about disk or network throughput.
 
 The worker records the **25 / 50 / 75 / 100** milestones. A plugin-level notifier
@@ -121,6 +130,14 @@ virtual filesystem with a bounded output buffer. An archive preview validates
 the manifest, extracts only the selected image into a private temporary directory
 and cleans up after reading. Remote archives are first downloaded temporarily.
 The source image and archive are never rewritten.
+
+## Audio and video playback
+
+The player opens one file at a time using an unguessable, revocable URL on a loopback-only HTTP server. The server supports byte ranges for seeking; local files are held by descriptor and SMB reads use bounded offsets. Paths and credentials are not put in media URLs. Closing the player revokes access and stops conversion processes. There are at most four sessions, with inactive access expiring after six hours.
+
+Steam decodes supported audio and video directly. If decoding fails and system FFmpeg is available, the server transcodes on demand to WebM with VP8/Opus, capped at 720p and 30 fps. Seeking restarts conversion at the requested time. No permanent converted copy is written. A bounded system ffprobe call supplies duration for formats Steam cannot inspect. These subprocesses use the same cleaned environment as background workers.
+
+TinyTag reads embedded audio artwork through a seekable view limited to 8 MiB of metadata reads. Cover bytes pass the raster checks used by image preview. Missing or invalid artwork falls back to a speaker icon.
 
 ## Text preservation and saving
 
@@ -196,6 +213,9 @@ their own copies of runtime files, so a plugin update does not stop their transf
 | Text editor and native keyboard | [src/Editor.tsx](../../src/Editor.tsx), [keyboard layout](../../src/useKeyboardSpace.ts) |
 | Text selection and movement | [src/editorText.ts](../../src/editorText.ts) |
 | Image viewer and bounded raster reads | [src/ImageViewer.tsx](../../src/ImageViewer.tsx), [images.py](../../fileexplorer/images.py) |
+| Media player and ranged streaming | [src/MediaPlayer.tsx](../../src/MediaPlayer.tsx), [media.py](../../fileexplorer/media.py) |
+| Copy checkpoint verification | [copy_resume.py](../../fileexplorer/copy_resume.py) |
+| Shared controller hints | [src/Legend.tsx](../../src/Legend.tsx) |
 | Appearance settings | [src/appearance.tsx](../../src/appearance.tsx) |
 | Decky backend routes | [main.py](../../main.py) |
 | Operations and progress | [service.py](../../fileexplorer/service.py) |

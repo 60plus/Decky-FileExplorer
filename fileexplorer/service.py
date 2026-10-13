@@ -15,11 +15,12 @@ from pathlib import Path
 from urllib.parse import quote
 
 from . import archive, discovery, trash, editor, images
+from .media import Media
 from .updates import installed_version
 from .vfs import VFS, join, parent, split, validate_name
 
 DEFAULTS = dict(show_hidden=False, folders_first=True, sort_by='name', remember_paths=True,
-                left='', right='', extraction_limit_gib=100, accent='cyan', opacity=100, text_size=14, ui_scale=100, check_updates_on_start=True)
+                left='', right='', extraction_limit_gib=100, accent='cyan', opacity=100, text_size=14, ui_scale=100, legend_mode='both', check_updates_on_start=True)
 
 
 class Cancelled(Exception):
@@ -47,6 +48,8 @@ class Service:
         self.archive_lock = threading.Lock()
         self._speed_samples = []
         self._archive_work_files = None
+        self.media = Media()
+        self.copy_resume = None
 
     def profiles(self):
         with self.lock:
@@ -89,6 +92,8 @@ class Service:
                 elif key == 'text_size' and type(value) is int and value in (12, 14, 16, 18):
                     self.config['settings'][key] = value
                 elif key == 'ui_scale' and type(value) is int and value in (70, 80, 90, 100):
+                    self.config['settings'][key] = value
+                elif key == 'legend_mode' and value in ('panel', 'steam', 'both', 'none'):
                     self.config['settings'][key] = value
                 elif key in ('left', 'right'):
                     archive.parse(value) if archive.is_location(value) else split(value)
@@ -178,11 +183,12 @@ class Service:
 
     def _archive_manifest(self, fs, source):
         info = fs.info(source)
-        stamp = (info['size'], info['modified'])
+        stamp = (info['size'], info['modified'], self.extraction_limit())
         with self.archive_lock:
             cached = self.archive_cache.get(source)
             if cached and cached[0] == stamp: return cached[1]
-            with self._archive_file(fs, source) as local: entries = archive.manifest(local)
+            with self._archive_file(fs, source) as local:
+                entries = archive.manifest(local, self.extraction_limit(), self.staging_progress if self._archive_work_files is not None else lambda *_: None)
             if len(self.archive_cache) >= 8: self.archive_cache.pop(next(iter(self.archive_cache)))
             self.archive_cache[source] = (stamp, entries)
             return entries
@@ -323,6 +329,12 @@ class Service:
         try: return editor.read(fs, location, encoding)
         finally: fs.close()
 
+    def open_media(self, location):
+        return self.media.open(location, self.profiles())
+
+    def close_media(self, token):
+        return self.media.close(token)
+
     def save_text(self, location, text, revision, encoding=None):
         fs = VFS(self.profiles())
         try: return editor.save(fs, location, text, revision, encoding)
@@ -415,7 +427,8 @@ class Service:
                     total += size; work += size
                 else:
                     size = self._estimate_tree(fs, source)
-                    total += size; work += size * (2 if split(source)[0] and split(destination)[0] else 1)
+                    staged_remote = self.copy_resume is None and split(source)[0] and split(destination)[0]
+                    total += size; work += size * (2 if staged_remote else 1)
         with self.lock:
             self.job.update(total_bytes=total, total_work=work, work_bytes=0, bytes=0, phase='Starting')
             self._speed_samples = [(time.monotonic(), 0)]
@@ -444,6 +457,7 @@ class Service:
                 fs.write_from(target, spool, self.progress)
 
     def _copy(self, fs, source, destination):
+        if self.copy_resume is not None: return self.copy_resume.copy(fs, source, destination)
         skey, spath = split(source)
         dkey, dpath = split(destination)
         name = Path(spath).name
@@ -569,6 +583,7 @@ class Service:
             scratch.cleanup()
 
     def shutdown(self):
+        self.media.shutdown()
         self.cancel.set()
         self.executor.shutdown(wait=True, cancel_futures=True)
 

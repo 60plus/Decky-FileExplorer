@@ -67,6 +67,8 @@ def _walk(source, destination=None, progress=lambda *_: None, limit=100 * 1024**
     new = bind('archive_read_new', ptr)
     support_filter = bind('archive_read_support_filter_all', integer, ptr)
     support_format = bind('archive_read_support_format_all', integer, ptr)
+    support_raw = bind('archive_read_support_format_raw', integer, ptr)
+    archive_format = bind('archive_format', integer, ptr)
     opening = bind('archive_read_open_filename', integer, ptr, string, C.c_size_t)
     header = bind('archive_read_next_header', integer, ptr, C.POINTER(ptr))
     pathname = bind('archive_entry_pathname', string, ptr)
@@ -86,6 +88,10 @@ def _walk(source, destination=None, progress=lambda *_: None, limit=100 * 1024**
     try:
         check(support_filter(handle))
         check(support_format(handle))
+        # libarchive's "all" excludes single compressed streams. Enable raw
+        # fallback only for known compression headers, never for arbitrary data.
+        with open(source, 'rb') as source_file: magic = source_file.read(6)
+        if magic.startswith((b'\x1f\x8b', b'BZh', b'\xfd7zXZ\x00')): check(support_raw(handle))
         check(opening(handle, os.fsencode(source), 1024 * 128))
         entry = ptr()
         buffer = C.create_string_buffer(1024 * 1024)
@@ -95,7 +101,8 @@ def _walk(source, destination=None, progress=lambda *_: None, limit=100 * 1024**
             check(rc)
             count += 1
             if count > 100000: raise ValueError('Archive contains more than 100,000 entries')
-            name = os.fsdecode(pathname(entry) or b'')
+            raw_stream = archive_format(handle) == 0x90000
+            name = 'data' if raw_stream else os.fsdecode(pathname(entry) or b'')
             relative = safe_member(name)
             if hardlink(entry) or symlink(entry) or kind(entry) not in (0o100000, 0o040000):
                 raise ValueError('Archive contains a link or special file: ' + name[:120])
@@ -108,7 +115,16 @@ def _walk(source, destination=None, progress=lambda *_: None, limit=100 * 1024**
                 directory = kind(entry) == 0o040000
                 if normalized in entries and not (directory and entries[normalized]['directory']):
                     raise ValueError('Archive contains duplicate entries: ' + name[:120])
-                entries[normalized] = dict(directory=directory, size=max(0, size(entry)), modified=mtime(entry))
+                length = max(0, size(entry))
+                if raw_stream:
+                    length = 0
+                    while True:
+                        progress(0, name)
+                        n = read(handle, buffer, len(buffer)); check(n)
+                        if not n: break
+                        length += n
+                        if limit is not None and length > limit: raise size_limit_error(limit)
+                entries[normalized] = dict(directory=directory, size=length, modified=mtime(entry))
                 for p in relative.parents:
                     if str(p) == '.': break
                     key = p.as_posix()
@@ -138,8 +154,8 @@ def _walk(source, destination=None, progress=lambda *_: None, limit=100 * 1024**
         free(handle)
 
 
-def manifest(source):
-    return _walk(source)
+def manifest(source, limit=100 * 1024**3, progress=lambda *_: None):
+    return _walk(source, limit=limit, progress=progress)
 
 
 def extract(source, destination, progress, limit=100 * 1024**3, selected=None):

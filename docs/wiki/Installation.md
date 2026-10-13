@@ -87,6 +87,14 @@ An already running copy or extraction has its own worker files and can continue
 through a plugin reload or replacement. Notifications become available again
 when Steam and Decky are running. A system reboot still interrupts the operation.
 
+## First launch on a handheld
+
+The installation package is the same for PC and handheld. Launch FileExplorer
+from Decky in Gaming Mode; its window adapts to the available space automatically.
+For more visible files or editor lines, adjust **Interface scale** in Settings
+and reopen the window. See the [handheld guide](Handheld-Guide.md) for the keyboard,
+L3/R3 toolbar controls and controller legend settings.
+
 ## Remove the plugin
 
 Finish or cancel the current operation and wait for its final status. Then use

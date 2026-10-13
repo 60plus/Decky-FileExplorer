@@ -17,6 +17,21 @@ them before retrying.
 | Permission denied | FileExplorer runs as the Steam user. Choose a writable location or correct access through the appropriate system/share settings. |
 | Update does not offer a download | Select **Check for updates**, check the network connection and read any error shown. GitHub may temporarily limit requests. As a fallback, install the plugin ZIP from the [latest release](https://github.com/60plus/Decky-FileExplorer/releases/latest). |
 
+## Handheld display and controls
+
+| Symptom | What to check |
+| --- | --- |
+| Too few files or editor lines fit | Reduce Settings → Interface scale to 90% or 80%, then reopen FileExplorer. The outer window keeps its size. |
+| Text is too small | Increase Text size or return Interface scale to 100%; reopen the window. |
+| The editor toolbar uses too much room | Press L3 to hide it, including while Steam's keyboard is open. L3 shows it again; R3 reveals and focuses it. |
+| I cannot reach the editor or player toolbar | Press R3, then navigate left/right. R3 again returns to the content. |
+| Text selection does not work with RT | Hide Steam's keyboard first; while it is open, RT/R2 is its Enter action. |
+| Controller hints appear twice or have disappeared | Settings → Controller legend selects Panel only, Steam bar only, Both or Hidden. Reopen FileExplorer to apply. |
+
+The [handheld guide](Handheld-Guide.md) shows the controls and settings, and the
+[handheld gallery](Handheld-Gallery.md) includes native captures at both 100%
+and 80% interface scale.
+
 ## Copy or extraction problems
 
 | Message or symptom | Next step |
@@ -25,12 +40,12 @@ them before retrying.
 | Destination already exists | Rename the source or choose a destination without that name. Copies do not merge or overwrite existing items. |
 | Progress remains at Preparing | Folder enumeration or a remote archive download may still be running. Check available local space and the network. |
 | Background service could not start | The systemd user session must be available. Collect the service diagnostics below. No files are transferred when startup fails. |
-| Background service stopped | A reboot, stopped session or worker failure may have interrupted it. Check completed output and partial items before retrying; there is no automatic resume. |
+| Background service stopped | A reboot, stopped session or worker failure may have interrupted it. Reconnect missing storage and use Options → Resume interrupted copy for a checkpointed copy. Extraction must be started again; nothing resumes automatically. |
 | No notification | Notifications appear while the FileExplorer window is closed and need Steam and Decky running. Milestones already shown in the open window are not replayed. |
 | Archive cannot be opened or extracted | Check the size limit, format, available local space and whether it is encrypted, multipart or contains rejected entries. |
 | Cannot copy links or special files | Use another suitable tool for those items; this version copies regular files and folders. |
 
-Remote archives, selected extraction and SMB-to-SMB copies require temporary
+Remote archives and selected extraction require temporary
 local storage. Free space on the destination alone is not sufficient.
 
 ## SMB connection problems
@@ -61,6 +76,14 @@ repeating an operation. An incomplete copy may leave a hidden
   Use an external editor if you need to intentionally convert the encoding.
 - **Too large / binary file:** the editor supports regular text up to 512 KiB and
   10,000 lines. Use Desktop Mode for files outside those limits.
+
+## Media playback
+
+- **No A action:** the extension has no supported preview. For plain text, use Options → Edit file. PDF and Office document rendering is not included.
+- **Cannot play this file:** reconnect an unavailable share or try another file. A container such as MKV can hold different codecs. Steam decodes supported codecs directly; system FFmpeg provides compatibility playback when available.
+- **Compatibility playback is slow:** it converts video while playing, up to 720p/30 fps. Performance depends on the original codec, device and network.
+- **Media inside an archive:** extract it to a local folder or SMB share before playing it.
+- **No cover:** only embedded artwork is used. Missing, oversized or unreadable cover tags show a speaker icon.
 
 ## Trash problems
 

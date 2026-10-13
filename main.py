@@ -40,7 +40,9 @@ class Plugin:
                           discover=self.service.discover, shares=self.service.shares, open_archive=self.service.open_archive,
                           mkdir=self.service.mkdir, rename=self.service.rename, preview=self.service.preview,
                           read_text=self.service.read_text, save_text=self.service.save_text, image=self.service.image,
+                          open_media=self.service.open_media, close_media=self.service.close_media,
                           start=self.jobs.start, job=self.jobs.state, cancel=self.jobs.cancel, notifications=self.jobs.notifications,
+                          retry=self.jobs.retry,
                           check_updates=self.updates.check, prepare_update=self.updates.prepare, startup_update=self.updates.startup)
             if method not in routes: raise ValueError('Unknown request')
             return dict(ok=True, data=await asyncio.to_thread(routes[method], **args))

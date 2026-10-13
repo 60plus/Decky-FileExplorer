@@ -3,9 +3,10 @@ import { api } from './api';
 import { explorerVisible } from './activity';
 import { Icon } from './Icon';
 import { UpdateCandidate } from './Updates';
+import { ConfirmDialog, openDialog, RecoveryDialog } from './dialogs';
 
-type Notice = { kind: string; label: string; milestone: number | string; error: string };
-export function startNotifications() {
+type Notice = { id: string; kind: string; label: string; milestone: number | string; error: string; recoverable: boolean };
+export function startNotifications(openExplorer: () => void) {
   let stopped = false, pending = false;
   let updatePending = false;
   const checkStartup = async () => {
@@ -26,6 +27,12 @@ export function startNotifications() {
       const events = await api<Notice[]>('notifications', { visible: explorerVisible() });
       if (stopped) return;
       for (const event of events) {
+        if (event.recoverable && ['error', 'cancelled'].includes(String(event.milestone)) && !explorerVisible()) {
+          openDialog(<RecoveryDialog error={`${event.label}: ${event.error}`} openExplorer={openExplorer}
+            resume={async () => { await api('retry', { job_id: event.id, mode: 'resume' }); }}
+            restart={() => openDialog(<ConfirmDialog title="Start the copy again?" description="Copy all selected items into a new FileExplorer retry folder in the original destination. Previous completed files and partial copies will be kept." action="Start again" submit={async () => { await api('retry', { job_id: event.id, mode: 'restart' }); }} />)} />);
+          continue;
+        }
         const verb = event.kind === 'extract' ? 'Extracted' : 'Copied';
         toaster.toast({ title: 'FileExplorer', body: typeof event.milestone === 'number'
           ? `${verb} ${event.milestone}% of ${event.label}${event.milestone === 100 ? ' • Done' : ''}`

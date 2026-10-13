@@ -21,6 +21,9 @@ def run(folder):
         service = Service(request['home'], folder / 'engine')
         service.config['settings'].update(request['settings'])
         service.session_connections = request['connections']
+        if request.get('recoverable'):
+            from fileexplorer.copy_resume import CopyResume
+            service.copy_resume = CopyResume(folder / 'copy.jsonl', service.progress)
         signal.signal(signal.SIGTERM, lambda *_: service.cancel.set())
         signal.signal(signal.SIGINT, lambda *_: service.cancel.set())
         service.start(request['action'], request['sources'], request['destination'])
@@ -31,6 +34,7 @@ def run(folder):
             for threshold in (25, 50, 75, 100):
                 if state['percent'] >= threshold and threshold not in events: events.append(threshold)
             state.update(id=previous['id'], kind=previous['kind'], label=previous['label'],
+                         recoverable=request.get('recoverable', False),
                          events=events, updated=time.time(), background=True)
             atomic_json(folder / 'state.json', state)
             if state['status'] != 'running': break

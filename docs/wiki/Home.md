@@ -4,7 +4,7 @@
 
 Manage files on your **SteamOS PC or handheld** without leaving Gaming Mode.
 FileExplorer opens two folders side by side, with controller controls for copying,
-archive browsing, text editing, image previews and network shares.
+archive browsing, text editing, image previews, audio/video playback and network shares.
 
 This manual describes **FileExplorer**. The screenshots were captured from the
 installed plugin on a SteamOS PC and ROG Ally handheld, using demonstration files and real LAN discovery
@@ -16,11 +16,14 @@ results. Steam supplies the button glyphs for the active controller.
 | --- | --- |
 | Install the plugin or update the installed ZIP | [Installation](Installation.md) |
 | Learn the controls and use the two panels | [Everyday use](Daily-Use.md) |
+| Set up the layout, keyboard and controller hints on a handheld | [Handheld guide](Handheld-Guide.md) |
 | Copy files and leave a transfer running | [Copying and background jobs](Copy-and-Background-Jobs.md) |
 | Open an archive and extract only what I need | [Archives](Archives.md) |
 | Edit TXT, CFG, JSON or other small text files | [Text editor](Text-Editor.md) |
 | View pictures and switch between them with the controller | [Image viewer](Image-Viewer.md) |
-| See the handheld layout and make room for more text | [Handheld screenshots and scaling](Handheld-Gallery.md) |
+| Play audio and video with the controller | [Media player](Media-Player.md) |
+| Check audio, video and text file support | [Supported formats](Supported-Formats.md) |
+| Browse all handheld feature screenshots | [Handheld gallery](Handheld-Gallery.md) |
 | Find a NAS, connect to SMB or open a mounted share | [Network shares](Network-Shares.md) |
 | Show hidden files, change sorting or empty Trash | [Settings and Trash](Settings-and-Trash.md) |
 | Understand the implementation | [How it works](How-It-Works.md) |
@@ -37,7 +40,9 @@ results. Steam supplies the button glyphs for the active controller.
 The copy continues if you close FileExplorer. Reopen it to see progress, or let
 the notifications report **25%, 50%, 75% and completion**.
 
-![Two panels with multiple folders selected](../../images/screenshots/01-two-panels-c446ee4897f4.png)
+| SteamOS PC | SteamOS handheld |
+| --- | --- |
+| [![Two file panels on PC](../../images/screenshots/01-two-panels-c446ee4897f4.png)](../../images/screenshots/01-two-panels-c446ee4897f4.png) | [![Two file panels on handheld](../../images/screenshots/handheld-01-two-panels-c2e9c0a15101.png)](../../images/screenshots/handheld-01-two-panels-c2e9c0a15101.png) |
 
 ## What this version includes
 
@@ -51,6 +56,8 @@ The **Update** page checks the
 verifies the download and opens Decky's installation prompt. Startup checks notify
 once per OS boot when an update is available and can be disabled in Settings.
 
-The recorded test environment is **SteamOS 3.8.28 with Decky Loader 3.2.10 on an
-x86-64 PC**. See the [verification notes](../TESTING.md) for the checks and their
-limits, and the [full screenshot gallery](../SCREENSHOTS.md) for the feature captures.
+The recorded test environments are a **SteamOS PC and a ROG Ally handheld**, both
+running **SteamOS 3.8.28 with Decky Loader 3.2.10**. See the
+[verification notes](../TESTING.md) for the checks and their limits. Browse the
+[PC gallery](../SCREENSHOTS.md) or [handheld gallery](Handheld-Gallery.md), or start
+with the [handheld setup and controls guide](Handheld-Guide.md).

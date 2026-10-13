@@ -62,5 +62,20 @@ class JobTests(unittest.TestCase):
             self.assertEqual(systemd_environment()['LD_LIBRARY_PATH'], '/system/original')
             self.assertEqual(os.environ['LD_LIBRARY_PATH'], '/tmp/_MEI/lib')
 
+    def test_retry_refuses_stale_job_or_running_operation(self):
+        self.state.update(recoverable=True, status='error')
+        atomic_json(self.folder / 'state.json', self.state)
+        with self.assertRaisesRegex(ValueError, 'no longer'): self.jobs.retry('b' * 32, 'resume')
+        with self.assertRaisesRegex(ValueError, 'Choose'): self.jobs.retry(self.state['id'], 'invalid')
+        self.state['status'] = 'running'
+        import time
+        self.state['updated'] = time.time()
+        atomic_json(self.folder / 'state.json', self.state)
+        with self.assertRaisesRegex(ValueError, 'already running'): self.jobs.retry(self.state['id'], 'resume')
+
+    def test_cancel_confirmation_cannot_cancel_a_different_job(self):
+        with self.assertRaisesRegex(ValueError, 'finished'): self.jobs.cancel('different-job')
+        self.assertFalse((self.folder / 'cancel').exists())
+
 
 if __name__ == '__main__': unittest.main()

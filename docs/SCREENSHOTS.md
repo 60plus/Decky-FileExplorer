@@ -1,6 +1,6 @@
 # FileExplorer screenshot gallery
 
-FileExplorer, captured in Steam Gaming Mode on a SteamOS PC on 12 October 2026.
+FileExplorer, captured in Steam Gaming Mode on a SteamOS PC on 12–13 October 2026.
 These are unedited screenshots of the installed plugin, using demonstration files in
 `/home/deck/fileexplorer-lab/demo` and real SMB discovery results from the test LAN.
 Controller glyphs are supplied by Steam.
@@ -45,14 +45,14 @@ changes possible without leaving Gaming Mode. Formatting and encoding are retain
 JSON also receives a syntax check before saving. The example shows a JSON file with CRLF endings.
 Press **R3** to reach the toolbar and again to return to the cursor.
 
-![Text editor showing a controller configuration](../images/screenshots/03-text-editor-d668bc2ac194.png)
+![Text editor showing a controller configuration](../images/screenshots/pc-text-editor-69a07dff4a63.png)
 
 ## See the line above the keyboard
 
 Press **A** to edit. The whole editor panel shrinks above Steam's on-screen keyboard,
 keeping the toolbar, current line, nearby text and status visible.
 
-![Editing controller sensitivity with Steam's keyboard](../images/screenshots/04-keyboard-34fba006255f.png)
+![Editing controller sensitivity with Steam's keyboard](../images/screenshots/pc-keyboard-5a4fc1f455bf.png)
 
 ## Follow a transfer at a glance
 
@@ -118,7 +118,7 @@ Hold **RT/R2** while moving in the text to select a fragment or several lines.
 **View/Select** copies into the system clipboard. Use Steam's keyboard to paste,
 and **Menu/Start** to undo an edit.
 
-![Multiline text selection with native controller glyphs](../images/screenshots/12-text-selection-2b7cce3b86f0.png)
+![Multiline text selection with native controller glyphs](../images/screenshots/pc-text-selection-b0988bb31efc.png)
 
 ## View pictures in Gaming Mode
 
@@ -136,3 +136,31 @@ extracted temporarily, and the source archive is unchanged. The second capture
 shows another image selected from the demonstration ZIP.
 
 ![Previewing an image directly from the demonstration ZIP](../images/screenshots/14-archive-image-ef37a7c65758.png)
+
+## Media, recovery and controller hints
+
+[![Media file icons](../images/screenshots/pc-media-file-icons-c2990a71ad86.png)](../images/screenshots/pc-media-file-icons-c2990a71ad86.png)
+
+[![Media audio cover](../images/screenshots/pc-media-audio-cover-3f939c3bcf38.png)](../images/screenshots/pc-media-audio-cover-3f939c3bcf38.png)
+
+[![Media audio speaker](../images/screenshots/pc-media-audio-speaker-184b17b8ac0f.png)](../images/screenshots/pc-media-audio-speaker-184b17b8ac0f.png)
+
+[![Media video](../images/screenshots/pc-media-video-784402732063.png)](../images/screenshots/pc-media-video-784402732063.png)
+
+[![Media fullscreen](../images/screenshots/pc-media-fullscreen-37836df233f1.png)](../images/screenshots/pc-media-fullscreen-37836df233f1.png)
+
+[![Text editor](../images/screenshots/pc-text-editor-69a07dff4a63.png)](../images/screenshots/pc-text-editor-69a07dff4a63.png)
+
+[![Keyboard](../images/screenshots/pc-keyboard-5a4fc1f455bf.png)](../images/screenshots/pc-keyboard-5a4fc1f455bf.png)
+
+[![Background copy recovery](../images/screenshots/pc-background-copy-recovery-9adc20048bda.png)](../images/screenshots/pc-background-copy-recovery-9adc20048bda.png)
+
+[![Legend settings](../images/screenshots/pc-legend-settings-1a198530e04e.png)](../images/screenshots/pc-legend-settings-1a198530e04e.png)
+
+[![Hidden legends](../images/screenshots/pc-hidden-legends-3eab97e66213.png)](../images/screenshots/pc-hidden-legends-3eab97e66213.png)
+
+## Compare controller legends
+
+Panel only, Steam bar only, both and hidden. Four native captures arranged side by side.
+
+[![Four controller legend modes on pc](../images/screenshots/pc-legend-comparison-ac8bf11feeb0.png)](../images/screenshots/pc-legend-comparison-ac8bf11feeb0.png)

@@ -4,7 +4,7 @@ import { api, message, TextFile } from './api';
 import { useAppearance, useModalStyle } from './appearance';
 import { ConfirmDialog, ErrorText, openDialog } from './dialogs';
 import { Cursor, lineOffset, moveCursor, position, selectedText } from './editorText';
-import { Glyph } from './Glyph';
+import { Legend, stickHint } from './Legend';
 import { css } from './style';
 import { useKeyboardSpace } from './useKeyboardSpace';
 import { preserveBackgroundScroll } from './backgroundScroll';
@@ -238,8 +238,8 @@ export function Editor({ location, saved, closeModal }: { location: string; save
       }}
       onButtonUp={e => { if (e.detail.button === GamepadButton.TRIGGER_RIGHT) { selecting.current = false; stop(e); } }}
       onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.stopPropagation(); undo(); } }}
-      actionDescriptionMap={{ [GamepadButton.START]: 'Undo', [GamepadButton.SELECT]: 'Copy text' }}
-      onOKActionDescription={toolbarFocused ? 'Use button' : editing ? 'Keyboard' : 'Edit text'} onSecondaryActionDescription="Insert line" onOptionsActionDescription="Save file">
+      actionDescriptionMap={{ [GamepadButton.START]: keyboard.visible ? undefined : 'Undo', [GamepadButton.SELECT]: keyboard.visible ? undefined : 'Copy', [GamepadButton.LSTICK_CLICK]: stickHint(toolbarHidden ? 'Show bar' : 'Hide bar'), [GamepadButton.RSTICK_CLICK]: stickHint(toolbarFocused ? 'Text' : 'Toolbar'), [GamepadButton.TRIGGER_RIGHT]: !editing && !keyboard.visible ? 'Select' : undefined }}
+      onOKActionDescription={toolbarFocused ? 'Use' : editing ? 'Keyboard' : 'Edit'} onSecondaryActionDescription="Insert" onOptionsActionDescription="Save">
       <header className="fe-header"><div className="fe-editor-title"><strong>{file?.name || location.split('/').pop()}</strong><div className="fe-subtitle">{file ? `${file.encoding}${file.bom ? ' + BOM' : ''} • ${file.newline} • ${lines.length} lines${dirty ? ' • Unsaved changes' : ''}` : 'Text editor'}</div></div><DialogButton className="fe-btn fe-toolbar-toggle" onClick={toggleToolbar}>{toolbarHidden ? 'Show toolbar' : 'Hide toolbar'}</DialogButton></header>
       {!toolbarHidden && <Focusable className="fe-toolbar" flow-children="row" onGamepadFocus={() => { region.current = 'toolbar'; setToolbarFocused(true); }}
         onGamepadDirection={e => { if (e.detail.button === GamepadButton.DIR_DOWN) { stop(e); focusText(); } }}>
@@ -266,7 +266,7 @@ export function Editor({ location, saved, closeModal }: { location: string; save
           onActivate={e => { stop(e); edit(row); }}><span className="fe-line-number">{row + 1}</span><code>{renderedLine(line, row, start)}</code></Focusable>; })}
       </Focusable>}
       <div className="fe-status">{busy ? 'Working…' : notice || `Line ${selected + 1}, column ${position(text, cursor.head).column + 1}${cursor.anchor !== cursor.head ? ` • ${Math.abs(cursor.head - cursor.anchor)} characters selected` : ''} • ${editing ? 'Steam keyboard: Paste inserts clipboard text at the cursor' : 'Directions move the cursor • Copy uses the selection or current line'}`}</div>
-      <div className="fe-legend"><Glyph button={GamepadButton.LSTICK_CLICK} label={toolbarHidden ? 'Show toolbar' : 'Hide toolbar'} />{keyboard.visible ? <><span>Steam keyboard: Paste</span><span>Arrow keys: move cursor</span><Glyph button={GamepadButton.RSTICK_CLICK} label="Toolbar" /></> : <><Glyph button={GamepadButton.OK} label={toolbarFocused ? 'Use button' : editing ? 'Keyboard' : 'Edit text'} /><Glyph button={GamepadButton.CANCEL} label="Back" /><Glyph button={GamepadButton.SECONDARY} label="Insert line" /><Glyph button={GamepadButton.OPTIONS} label="Save" /><Glyph button={GamepadButton.START} label="Undo" /><Glyph button={GamepadButton.SELECT} label="Copy" /><Glyph button={GamepadButton.RSTICK_CLICK} label={toolbarFocused ? 'Text' : 'Toolbar'} />{!editing && <Glyph button={GamepadButton.TRIGGER_RIGHT} label="+ directions: select" />}</>}</div>
+      <Legend />
     </Focusable>
   </ModalRoot>;
 }

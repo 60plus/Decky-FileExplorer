@@ -12,7 +12,9 @@ shares already mounted by SteamOS. Either panel can point to a network location.
 3. Choose **Find servers** and wait for the results.
 4. Select a server to fill **Server / IP** in the connection form.
 
-![Real SMB discovery results with server names and local IP addresses](../../images/screenshots/10-smb-discovery-be509db9bd73.png)
+| SteamOS PC | SteamOS handheld |
+| --- | --- |
+| [![Local SMB discovery on PC](../../images/screenshots/10-smb-discovery-be509db9bd73.png)](../../images/screenshots/10-smb-discovery-be509db9bd73.png) | [![Local SMB discovery on handheld](../../images/screenshots/handheld-11-discovery-b01bfbee30d1.png)](../../images/screenshots/handheld-11-discovery-b01bfbee30d1.png) |
 
 This screenshot shows seven real results from the test LAN. Names appear when
 the service advertises them; otherwise the list shows the local IP address.
@@ -32,7 +34,9 @@ No login details are sent by the discovery scan.
 3. Optionally set a **Display name** and enable **Remember connection**.
 4. Choose **Connect**. The share opens in the panel you selected.
 
-![SMB connection form](../../images/screenshots/07-network-share-982884978b24.png)
+| SteamOS PC | SteamOS handheld |
+| --- | --- |
+| [![SMB connection form on PC](../../images/screenshots/07-network-share-982884978b24.png)](../../images/screenshots/07-network-share-982884978b24.png) | [![SMB connection form on handheld](../../images/screenshots/handheld-10-network-ca7a10e063eb.png)](../../images/screenshots/handheld-10-network-ca7a10e063eb.png) |
 
 The form screenshot uses `nas.example` and `Games` as example values. For your
 connection, **Server / IP** takes a hostname or IPv4 address without `smb://`;

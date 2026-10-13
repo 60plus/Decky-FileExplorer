@@ -15,7 +15,9 @@ Steam's header and controller controls.
    or **LB/RB** does the same. The Previous and Next buttons also work with a mouse.
 4. Press **B** or choose **Close** to return to the file list.
 
-![Aurora landscape opened in the image viewer with controller glyphs](../../images/screenshots/13-image-viewer-b9b28a6b4bd2.png)
+| SteamOS PC | SteamOS handheld |
+| --- | --- |
+| [![Image preview on PC](../../images/screenshots/13-image-viewer-b9b28a6b4bd2.png)](../../images/screenshots/13-image-viewer-b9b28a6b4bd2.png) | [![Image preview on handheld](../../images/screenshots/handheld-06-image-34c223c97b74.png)](../../images/screenshots/handheld-06-image-34c223c97b74.png) |
 
 The header shows the filename, its position in the folder's image list, dimensions
 and file size. The viewer uses the panel's current sort order and hidden-file
@@ -29,7 +31,9 @@ and inside supported **archives**. Open the archive with **A**, enter the folder
 containing pictures and press **A** again on the image. Left/right stays within
 that archive folder.
 
-![Image preview opened directly from a ZIP archive](../../images/screenshots/14-archive-image-ef37a7c65758.png)
+| SteamOS PC | SteamOS handheld |
+| --- | --- |
+| [![Image inside an archive on PC](../../images/screenshots/14-archive-image-ef37a7c65758.png)](../../images/screenshots/14-archive-image-ef37a7c65758.png) | [![Image inside an archive on handheld](../../images/screenshots/handheld-07-archive-image-99f769bea171.png)](../../images/screenshots/handheld-07-archive-image-99f769bea171.png) |
 
 Previewing leaves the source unchanged. An archive preview temporarily extracts
 only the selected image and cleans up that temporary file. An archive stored on

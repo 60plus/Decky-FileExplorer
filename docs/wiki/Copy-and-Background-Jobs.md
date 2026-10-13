@@ -23,7 +23,7 @@ live speed and current filename. Preparing a large directory or remote archive
 can take time before byte progress begins.
 
 Speed measures the work performed in the current operation, including temporary
-staging where needed. Selected extraction and SMB-to-SMB copying have preparation
+staging where needed. Selected extraction has preparation
 and destination-writing stages, so the overall percentage does not always equal
 destination bytes divided by total bytes. The screenshot is a real transfer
 reading, not a benchmark or promised speed.
@@ -63,14 +63,18 @@ Existing names are not overwritten or merged. If a selected item already exists
 in the destination, the operation stops with a message. Rename the source or
 choose another destination before trying again.
 
-Press **Cancel** in the progress area to request cancellation. Wait for the final
-status before disconnecting a drive. Items completed earlier stay in the
-destination; cancellation does not roll them back.
+Press **Cancel** in the progress area, then confirm **Cancel operation**. Dismissing the confirmation keeps the operation running. Wait for the final status before disconnecting a drive. Completed items and partial copy data are kept.
 
-Each top-level copy is staged under a hidden `.fileexplorer-*.partial` name and
-renamed when complete. Normal cleanup removes an unfinished staging item. If a
-connection failure or abrupt stop leaves one behind, reconnect, check that the
-job has stopped and inspect the destination before removing that partial item.
+A failed copy offers **Resume**, **Start again…** and **Later**. After cancellation or reopening the window, use **Options → Resume interrupted copy…**. Reconnect a missing share first; session-only connections may need their login again.
+
+If FileExplorer is closed when a copy fails, a popup offers **Resume**, **Start
+again…**, **Cancel** and **Open FileExplorer**. This also applies to SMB copies.
+**Cancel** dismisses the popup and keeps the partial copy. The popup appears once
+per interrupted operation; recovery remains available from Options.
+
+**Resume** verifies saved bytes against the source and continues the partial file, keeping completed files. It refuses changed source files or altered partial data. Checking a large saved prefix can take time. **Start again** asks for confirmation and copies all selected items into a new `FileExplorer retry …` folder in the original destination, keeping previous results.
+
+Each top-level copy uses a hidden `.fileexplorer-*.partial` name until complete. Keep that item if you intend to resume. Only the latest interrupted copy is offered for recovery; starting another operation replaces that offer. Archive extraction does not support resume. Copies started by older plugin versions without checkpoints must be started again.
 
 Copies preserve file contents and folder structure. They are not metadata
 backups: ownership, permissions, ACLs and extended attributes are not reproduced.
@@ -78,3 +82,9 @@ Copying symbolic links and special files is refused.
 
 See [Archives](Archives.md) for extraction and
 [How it works](How-It-Works.md#background-job-lifecycle) for the worker lifecycle.
+
+## Recovering a background copy
+
+| SteamOS PC | SteamOS handheld |
+| --- | --- |
+| [![Four recovery actions in two rows on PC](../../images/screenshots/pc-background-copy-recovery-9adc20048bda.png)](../../images/screenshots/pc-background-copy-recovery-9adc20048bda.png) | [![Four recovery actions in two rows on handheld](../../images/screenshots/handheld-background-copy-recovery-6deea8398b9c.png)](../../images/screenshots/handheld-background-copy-recovery-6deea8398b9c.png) |

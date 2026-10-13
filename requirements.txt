@@ -2,3 +2,4 @@ pysmb==1.2.14
 pyasn1==0.6.1
 tqdm==4.70.1
 colorama==0.4.6
+tinytag==2.2.0

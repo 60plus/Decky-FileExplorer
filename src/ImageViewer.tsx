@@ -2,10 +2,9 @@ import { DialogButton, Focusable, GamepadButton, GamepadEvent, ModalRoot } from 
 import { useEffect, useRef, useState } from 'react';
 import { api, bytes, Entry, message } from './api';
 import { useAppearance, useModalStyle } from './appearance';
-import { Glyph } from './Glyph';
+import { Legend } from './Legend';
 import { css } from './style';
-
-export const isImage = (name: string) => /\.(bmp|png|apng|jpe?g|jpe|jfif|gif|webp)$/i.test(name);
+import { isImage } from './fileTypes';
 type ImageData = { data: string; mime: string; size: number; width: number; height: number };
 const stop = (event: { preventDefault: () => void; stopPropagation: () => void }) => { event.preventDefault(); event.stopPropagation(); };
 
@@ -52,7 +51,7 @@ export function ImageViewer({ entries, selected, folder, closeModal }: { entries
         {error ? <div className="fe-error" role="alert">{error}<br />Use left or right to open another image.</div> : shown ? <img key={current.path} src={shown.data} alt={current.name} draggable={false} onError={() => setError('This image could not be decoded. The file may be damaged or use unsupported encoding.')} /> : <div className="fe-muted" role="status">Loading image…</div>}
       </Focusable>
       <Focusable className="fe-toolbar" flow-children="row"><DialogButton className="fe-btn" disabled={items.length < 2} onClick={() => move(-1)}>← Previous</DialogButton><DialogButton className="fe-btn" disabled={items.length < 2} onClick={() => move(1)}>Next →</DialogButton><DialogButton className="fe-btn" onClick={closeModal}>Close</DialogButton></Focusable>
-      <div className="fe-legend"><span>← / → Previous / next image</span><Glyph button={GamepadButton.BUMPER_LEFT} label="Previous" /><Glyph button={GamepadButton.BUMPER_RIGHT} label="Next" /><Glyph button={GamepadButton.CANCEL} label="Close" /></div>
+      <Legend />
     </Focusable>
   </ModalRoot>;
 }

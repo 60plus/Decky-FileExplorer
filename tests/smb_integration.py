@@ -64,6 +64,37 @@ def main():
                 except OSError: time.sleep(.05)
             result = service.connect(dict(host='127.0.0.1', port=1445, share='TEST', username='fileexplorer-test', password=password, remember=True))
             remote = result['path']
+            # Real SMB range reads and interrupted uploads/downloads, isolated
+            # from the user's shares and credentials.
+            import urllib.request
+            from fileexplorer.copy_resume import CopyResume
+            media_bytes = bytes(range(256)) * 8192
+            (shared / 'sample.wav').write_bytes(media_bytes)
+            stream = service.open_media(join(remote, 'sample.wav'))
+            try:
+                with urllib.request.urlopen(urllib.request.Request(stream['url'], headers={'Range': 'bytes=1048576-1048831'})) as response:
+                    assert response.status == 206 and response.read() == bytes(range(256))
+            finally: service.close_media(stream['token'])
+            local_media = home / 'resume.bin'; local_media.write_bytes(media_bytes)
+            fs_resume = VFS(service.profiles())
+            try:
+                for number, source_path, destination_path in [
+                    (1, str(local_media), join(remote, 'upload-resume')),
+                    (2, join(remote, 'sample.wav'), str(home / 'download-resume')),
+                    (3, join(remote, 'sample.wav'), join(remote, 'remote-resume')),
+                ]:
+                    fs_resume.mkdir(destination_path)
+                    checkpoint = root / f'copy-{number}.jsonl'
+                    def interrupt(n, _):
+                        if n: raise OSError('Simulated connection loss after a real SMB write')
+                    try: CopyResume(checkpoint, interrupt).copy(fs_resume, source_path, destination_path)
+                    except OSError: pass
+                    else: raise AssertionError('Copy did not interrupt')
+                    output = CopyResume(checkpoint, lambda *_: None).copy(fs_resume, source_path, destination_path)
+                    import io
+                    check = io.BytesIO(); fs_resume.read_to(output, check, lambda *_: None)
+                    assert check.getvalue() == media_bytes
+            finally: fs_resume.close()
             image = (Path(__file__).parent / 'fixtures/images/sample.png').read_bytes()
             (shared / 'picture.png').write_bytes(image)
             preview = service.image(join(remote, 'picture.png'))
@@ -120,7 +151,8 @@ def main():
                 'download', 'recursive download', 'remote-to-remote copy', 'mkdir', 'rename', 'delete',
                 'saved credential reconnect', 'password not returned to UI', 'wrong password rejected',
                 'enumerate disk shares', 'selected extraction to SMB', 'browse remote archive', 'selected extraction from SMB',
-                'edit SMB text preserving CRLF and whitespace', 'preview SMB image', 'preview image inside SMB archive'])))
+                'edit SMB text preserving CRLF and whitespace', 'preview SMB image', 'preview image inside SMB archive',
+                'ranged SMB media stream', 'resume local-to-SMB', 'resume SMB-to-local', 'resume SMB-to-SMB'])))
         finally:
             service.shutdown()
             process.terminate(); process.join(5)

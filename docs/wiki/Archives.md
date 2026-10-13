@@ -4,7 +4,8 @@
 
 FileExplorer can browse **ZIP, RAR, 7z and TAR**, including common compressed TAR
 files, using SteamOS's libarchive. You can open archives stored locally or on a
-direct SMB share.
+direct SMB share. Plain GZ, BZ2 and XZ streams can also be opened; their
+uncompressed payload is shown as a single file named `data`.
 
 ## Open an archive like a folder
 
@@ -15,7 +16,9 @@ direct SMB share.
 The panel marks the location **Archive • read-only**. Browsing does not modify the
 archive. Rename, delete, editing and copying into an archive are unavailable.
 
-![Selected profiles inside a ZIP archive](../../images/screenshots/02-archive-browsing-63332a829c46.png)
+| SteamOS PC | SteamOS handheld |
+| --- | --- |
+| [![Archive browsing on PC](../../images/screenshots/02-archive-browsing-63332a829c46.png)](../../images/screenshots/02-archive-browsing-63332a829c46.png) | [![Archive browsing on handheld](../../images/screenshots/handheld-02-archive-1601defed318.png)](../../images/screenshots/handheld-02-archive-1601defed318.png) |
 
 ## Extract selected files or folders
 
@@ -65,7 +68,9 @@ or choose **Unlimited**, then start extraction again. Opening Settings does not
 change the limit or retry the operation automatically. **Cancel / B** returns to
 the file manager.
 
-![Archive limit dialog with the current limit and Open Settings button](../../images/screenshots/20-extraction-limit-7b3307f2e97f.png)
+| SteamOS PC | SteamOS handheld |
+| --- | --- |
+| [![Extraction limit dialog on PC](../../images/screenshots/20-extraction-limit-7b3307f2e97f.png)](../../images/screenshots/20-extraction-limit-7b3307f2e97f.png) | [![Extraction limit dialog on handheld](../../images/screenshots/handheld-20-extraction-limit-28eeebf9955c.png)](../../images/screenshots/handheld-20-extraction-limit-28eeebf9955c.png) |
 
 The bottom result message disappears after six seconds and does not return when
 FileExplorer is reopened. Check the destination before retrying a failed
