@@ -30,6 +30,7 @@ results. Steam supplies the button glyphs for the active controller.
 | Show hidden files, change sorting or empty Trash | [Settings and Trash](Settings-and-Trash.md) |
 | Understand the implementation | [How it works](How-It-Works.md) |
 | Resolve an error or collect useful diagnostics | [Troubleshooting](Troubleshooting.md) |
+| Support FileExplorer development | [Support](Support.md) |
 
 ## Your first copy
 

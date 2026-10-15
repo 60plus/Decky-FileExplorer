@@ -1,5 +1,10 @@
 # <img src="images/icon.svg" width="36" height="36" alt=""> FileExplorer
 
+[![Downloads](https://img.shields.io/github/downloads/60plus/Decky-FileExplorer/total)](https://github.com/60plus/Decky-FileExplorer/releases)
+[![Latest release downloads](https://img.shields.io/github/downloads/60plus/Decky-FileExplorer/latest/total?label=downloads%40latest)](https://github.com/60plus/Decky-FileExplorer/releases/latest)
+[![Stars](https://img.shields.io/github/stars/60plus/Decky-FileExplorer?style=flat&logo=github)](https://github.com/60plus/Decky-FileExplorer/stargazers)
+[![License: MIT](https://img.shields.io/github/license/60plus/Decky-FileExplorer)](LICENSE)
+
 ![FileExplorer: Two panels. One controller.](images/cover.png)
 
 A simple, controller-friendly file manager for **SteamOS and Decky Loader**.
@@ -9,6 +14,8 @@ Open two folders side by side, select your files and copy or move them across.
 [Handheld guide](docs/wiki/Handheld-Guide.md) ·
 [How it works](https://github.com/60plus/Decky-FileExplorer/wiki/How-It-Works) ·
 [Troubleshooting](https://github.com/60plus/Decky-FileExplorer/wiki/Troubleshooting)
+
+[![Buy me a beer](images/support/buy-me-a-beer.svg)](https://buymeacoffee.com/60plus)
 
 ## What it does
 
@@ -38,10 +45,13 @@ Open two folders side by side, select your files and copy or move them across.
 - **Select and copy text with the controller**, paste through Steam's keyboard and undo with Menu/Start. The whole editor fits above the keyboard.
 - **Customize the appearance** with six accent colors, background opacity, four text sizes and 70% to 100% interface scaling. The window keeps its size while smaller controls leave more room for content.
 
-The Decky sidebar contains **Launch FileExplorer**, **Settings**, **Update** and **About**.
+The Decky sidebar contains **Launch FileExplorer**, **Settings**, **Update**, **Support** and **About**.
 Settings, Update and About stay inside the compact sidebar. **Update** checks the latest stable GitHub release,
 shows its release notes, verifies the download and opens Decky's installation prompt.
 Startup checks notify once per OS boot when a newer version is available. Disable them in Settings if preferred.
+
+**Support** opens optional Buy Me a Coffee, Bitcoin and Cardano links and QR codes.
+All features stay free. See [support options](docs/wiki/Support.md) for addresses.
 
 ## Supported formats
 

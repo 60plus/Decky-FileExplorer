@@ -7,6 +7,7 @@ import { useMenuWrapping } from './navigation';
 import { profileLabels, SetupDialog } from './Setup';
 import { startNotifications } from './notifications';
 import { UpdatePanel } from './Updates';
+import { HeartIcon, SupportPanel } from './Support';
 import { Explorer } from './Explorer';
 import { installGameFolderButton } from './GameFolderButton';
 import { Icon } from './Icon';
@@ -96,7 +97,7 @@ function AboutPanel({ back }: { back: () => void }) {
   </div></PanelSection>;
 }
 
-type SidebarPage = 'home' | 'settings' | 'about' | 'update';
+type SidebarPage = 'home' | 'settings' | 'about' | 'update' | 'support';
 // Decky can remount the sidebar while a modal is open. Keep navigation outside
 // the mounted component so the modal's Settings button targets the live sidebar.
 let sidebar = { page: 'home' as SidebarPage, focusExtraction: false, homeFocus: 'launch' };
@@ -157,11 +158,12 @@ function Content() {
   const back = () => navigateSidebar('home', false, page);
   return <Focusable noFocusRing onCancelActionDescription={page === 'home' ? undefined : 'Back'}
     onCancelButton={page === 'home' ? undefined : e => { e.preventDefault(); e.stopPropagation(); back(); }}>
-    <style>{css}</style><span hidden ref={marker} />{page === 'update' ? <UpdatePanel back={back} /> : page === 'settings' ? <SettingsPanel back={back} focusExtraction={focusExtraction} /> : page === 'about' ? <AboutPanel back={back} /> :
+    <style>{css}</style><span hidden ref={marker} />{page === 'support' ? <SupportPanel back={back} /> : page === 'update' ? <UpdatePanel back={back} /> : page === 'settings' ? <SettingsPanel back={back} focusExtraction={focusExtraction} /> : page === 'about' ? <AboutPanel back={back} /> :
     <PanelSection><div ref={home} className="fe-panel-stack">
       <PanelSectionRow><DialogButton data-page="launch" onClick={() => launchExplorer()}>Launch FileExplorer</DialogButton></PanelSectionRow>
       <PanelSectionRow><DialogButton data-page="settings" onClick={() => navigateSidebar('settings')}>Settings</DialogButton></PanelSectionRow>
       <PanelSectionRow><DialogButton data-page="update" onClick={() => navigateSidebar('update')}>Update</DialogButton></PanelSectionRow>
+      <PanelSectionRow><DialogButton data-page="support" onClick={() => navigateSidebar('support')}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><HeartIcon />Support</span></DialogButton></PanelSectionRow>
       <PanelSectionRow><DialogButton data-page="about" onClick={() => navigateSidebar('about')}>About</DialogButton></PanelSectionRow>
     </div></PanelSection>}</Focusable>;
 }

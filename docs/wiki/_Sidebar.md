@@ -17,6 +17,7 @@
 - [Settings and Trash](Settings-and-Trash.md)
 - [How it works](How-It-Works.md)
 - [Troubleshooting](Troubleshooting.md)
+- [Support FileExplorer](Support.md)
 
 ## Project
 
