@@ -30,13 +30,13 @@ export function UpdatePanel({ back }: { back: () => void }) {
   }
   return <PanelSection title="Update"><div className="fe-panel-stack">
     <PanelSectionRow><DialogButton disabled={!!busy} onClick={back}>‹ Back</DialogButton></PanelSectionRow>
-    <PanelSectionRow><div style={{ fontSize: 14, lineHeight: 1.6 }}>Installed: {version}<br />{result?.latest && <>Latest: {result.latest}<br /></>}{result?.message || 'Check the latest stable release on GitHub.'}</div></PanelSectionRow>
+    <PanelSectionRow><div className="fe-message" style={{ fontSize: 14, lineHeight: 1.6 }}>Installed: {version}<br />{result?.latest && <>Latest: {result.latest}<br /></>}{result?.message || 'Check the latest stable release on GitHub.'}</div></PanelSectionRow>
     <ErrorText text={error} />
-    {(busy || note) && <PanelSectionRow><div role="status" style={{ fontSize: 13 }}>{busy || note}</div></PanelSectionRow>}
+    {(busy || note) && <PanelSectionRow><div className="fe-message" role="status" style={{ fontSize: 13 }}>{busy || note}</div></PanelSectionRow>}
     <PanelSectionRow><DialogButton disabled={!!busy} onClick={() => void run(false)}>Check for updates</DialogButton></PanelSectionRow>
     {result?.candidate && <>
       <PanelSectionRow><DialogButton disabled={!!busy} onClick={() => void run(true)}>Download and install {result.candidate.version}</DialogButton></PanelSectionRow>
-      <PanelSectionRow><div style={{ fontSize: 13 }}>{bytes(result.candidate.size)} • SHA-256 verified before installation.<br />Settings and saved connections are kept. Background transfers continue.</div></PanelSectionRow>
+      <PanelSectionRow><div className="fe-message" style={{ fontSize: 13 }}>{bytes(result.candidate.size)} • SHA-256 verified before installation.<br />Settings and saved connections are kept. Background transfers continue.</div></PanelSectionRow>
       <PanelSectionRow><div style={{ fontSize: 12, lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}><strong>Release notes</strong><br />{result.candidate.notes || 'No release notes provided.'}</div></PanelSectionRow>
     </>}
     <PanelSectionRow><DialogButton onClick={() => Navigation.NavigateToExternalWeb('https://github.com/60plus/Decky-FileExplorer/releases/latest')}>Open GitHub release</DialogButton></PanelSectionRow>

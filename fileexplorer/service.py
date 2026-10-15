@@ -14,13 +14,21 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
 
-from . import archive, discovery, trash, editor, images
+from . import archive, discovery, trash, editor, images, moving, packing, credentials
 from .media import Media
 from .updates import installed_version
 from .vfs import VFS, join, parent, split, validate_name
+from .drafts import Drafts
 
 DEFAULTS = dict(show_hidden=False, folders_first=True, sort_by='name', remember_paths=True,
-                left='', right='', extraction_limit_gib=100, accent='cyan', opacity=100, text_size=14, ui_scale=100, legend_mode='both', check_updates_on_start=True)
+                left='', right='', extraction_limit_gib=100, accent='cyan', opacity=100, text_size=14, ui_scale=100, legend_mode='both', check_updates_on_start=True,
+                toolbar_hidden=False, setup_completed=False, profile='', splash_enabled=False, splash_seen=False)
+# First-time setup presets. Only the chosen profile plus Save writes them;
+# existing personalisation stays untouched until then.
+_SETUP_SHARED = dict(opacity=100, text_size=14, show_hidden=True, folders_first=True, remember_paths=True,
+                     check_updates_on_start=True, sort_by='name', splash_enabled=False)
+PROFILES = dict(handheld=dict(_SETUP_SHARED, ui_scale=70, legend_mode='panel', toolbar_hidden=True),
+                pc=dict(_SETUP_SHARED, ui_scale=100, legend_mode='steam', toolbar_hidden=False))
 
 
 class Cancelled(Exception):
@@ -41,6 +49,8 @@ class Service:
             self.config['settings'].update(saved.get('settings', {}))
             self.config['connections'] = saved.get('connections', {})
         self.session_connections = {}
+        self.session_warnings = {}
+        self.drafts = Drafts(self.settings_dir)
         self.job = None
         self.cancel = threading.Event()
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='fileexplorer')
@@ -50,21 +60,33 @@ class Service:
         self._archive_work_files = None
         self.media = Media()
         self.copy_resume = None
+        self.replacement = None
+        self.credential_error = ''
+        if any('password' in p for p in self.config['connections'].values()):
+            try: self.save()
+            except (credentials.CredentialError, OSError):
+                self.credential_error = ('Saved SMB passwords could not be migrated to encrypted storage. '
+                                         'Existing connections are kept, but their old settings file is still unencrypted. '
+                                         'Check systemd credential support and reload FileExplorer to retry.')
 
     def profiles(self):
         with self.lock:
             return copy.deepcopy({**self.config['connections'], **self.session_connections})
 
     def save(self):
-        # Private, atomic replacement. Passwords are never sent back to the UI.
+        # Encrypt and verify before replacing any existing plaintext config.
+        candidate = copy.deepcopy(self.config)
+        candidate['connections'] = credentials.protect_profiles(candidate['connections'])
         fd, tmp = tempfile.mkstemp(dir=self.settings_dir, prefix='.settings-')
         try:
             os.fchmod(fd, 0o600) if hasattr(os, 'fchmod') else None
             with os.fdopen(fd, 'w') as f:
-                json.dump(self.config, f, ensure_ascii=False)
+                json.dump(candidate, f, ensure_ascii=False)
                 f.flush()
                 os.fsync(f.fileno())
             os.replace(tmp, self.config_file)
+            self.config = candidate
+            self.credential_error = ''
         finally:
             if os.path.exists(tmp): os.unlink(tmp)
 
@@ -75,34 +97,71 @@ class Service:
             settings['left'] = settings['right'] = self.home
         settings['left'] = settings['left'] or self.home
         settings['right'] = settings['right'] or self.home
-        connections = [{k: v for k, v in p.items() if k != 'password'} | {'id': key, 'saved': key in self.config['connections']}
+        connections = [{k: v for k, v in p.items() if k in ('host', 'share', 'username', 'domain', 'label', 'port')} |
+                       {'id': key, 'saved': key in self.config['connections'],
+                        'password_storage': credentials.storage_for(p, key in self.config['connections'])}
                        for key, p in self.profiles().items()]
-        return dict(settings=settings, connections=connections, home=self.home, version=installed_version(), job=self.job_state())
+        warnings = [self.credential_error, *self.session_warnings.values()]
+        return dict(settings=settings, connections=connections, credential_error=' '.join(filter(None, warnings)),
+                    home=self.home, version=installed_version(), job=self.job_state())
+
+    @staticmethod
+    def validate_settings(changes):
+        # Check every value before anything is applied, so one invalid key
+        # cannot leave a partially updated configuration behind.
+        allowed = {'show_hidden', 'folders_first', 'remember_paths', 'check_updates_on_start', 'toolbar_hidden', 'setup_completed', 'splash_enabled'}
+        valid = {}
+        for key, value in changes.items():
+            if key in allowed and type(value) is bool: valid[key] = value
+            elif key == 'sort_by' and value in ('name', 'size', 'modified'): valid[key] = value
+            elif key == 'accent' and value in ('cyan', 'blue', 'green', 'amber', 'violet', 'rose'): valid[key] = value
+            elif key == 'opacity' and type(value) is int and value in (70, 85, 100): valid[key] = value
+            elif key == 'text_size' and type(value) is int and value in (12, 14, 16, 18): valid[key] = value
+            elif key == 'ui_scale' and type(value) is int and value in (70, 80, 90, 100): valid[key] = value
+            elif key == 'legend_mode' and value in ('panel', 'steam', 'both', 'none'): valid[key] = value
+            elif key == 'profile' and value in ('handheld', 'pc', ''): valid[key] = value
+            elif key in ('left', 'right') and isinstance(value, str):
+                archive.parse(value) if archive.is_location(value) else split(value)
+                valid[key] = value
+            elif key == 'extraction_limit_gib' and type(value) is int and 0 <= value <= 1000: valid[key] = value
+            else: raise ValueError('Invalid setting: ' + str(key))
+        return valid
+
+    def _commit_settings(self, valid):
+        # Settings change as one transaction: a failed save leaves memory as it was.
+        with self.lock:
+            previous = self.config['settings']
+            self.config['settings'] = {**previous, **valid}
+            try: self.save()
+            except BaseException:
+                self.config['settings'] = previous
+                raise
+        return self.state()
 
     def update_settings(self, changes):
-        allowed = {'show_hidden', 'folders_first', 'remember_paths', 'check_updates_on_start'}
+        return self._commit_settings(self.validate_settings(changes))
+
+    def setup_profiles(self):
+        return copy.deepcopy(PROFILES)
+
+    def claim_splash(self):
+        # Independent of setup completion: cancelling the wizard must not replay
+        # the first-launch image. Serialize competing launches before saving.
         with self.lock:
-            for key, value in changes.items():
-                if key in allowed and type(value) is bool: self.config['settings'][key] = value
-                elif key == 'sort_by' and value in ('name', 'size', 'modified'): self.config['settings'][key] = value
-                elif key == 'accent' and value in ('cyan', 'blue', 'green', 'amber', 'violet', 'rose'):
-                    self.config['settings'][key] = value
-                elif key == 'opacity' and type(value) is int and value in (70, 85, 100):
-                    self.config['settings'][key] = value
-                elif key == 'text_size' and type(value) is int and value in (12, 14, 16, 18):
-                    self.config['settings'][key] = value
-                elif key == 'ui_scale' and type(value) is int and value in (70, 80, 90, 100):
-                    self.config['settings'][key] = value
-                elif key == 'legend_mode' and value in ('panel', 'steam', 'both', 'none'):
-                    self.config['settings'][key] = value
-                elif key in ('left', 'right'):
-                    archive.parse(value) if archive.is_location(value) else split(value)
-                    self.config['settings'][key] = value
-                elif key == 'extraction_limit_gib' and type(value) is int and 0 <= value <= 1000:
-                    self.config['settings'][key] = value
-                else: raise ValueError('Invalid setting: ' + str(key))
-            self.save()
-        return self.state()
+            settings = self.config['settings']
+            first = not settings['splash_seen']
+            show = first or settings['splash_enabled']
+            if first: self._commit_settings({'splash_seen': True})
+            return dict(show=show)
+
+    def setup(self, profile, changes=None):
+        # Apply a first-setup profile with the user's edits from the last step.
+        if profile not in PROFILES: raise ValueError('Unknown profile: ' + str(profile))
+        changes = dict(changes or {})
+        for key in ('profile', 'setup_completed', 'splash_seen'):
+            if key in changes: raise ValueError('Invalid setting: ' + key)
+        valid = self.validate_settings({**PROFILES[profile], **changes})
+        return self._commit_settings({**valid, 'profile': profile, 'setup_completed': True})
 
     def list_dir(self, location):
         fs = VFS(self.profiles())
@@ -235,9 +294,10 @@ class Service:
             known = self.profiles().get(saved)
             if not known or known['host'] != clean['host']: raise ValueError('Saved connection not found')
             clean = known
-        fs = VFS({'discovery': clean})
+        key = saved or 'discovery'
+        fs = VFS({key: clean})
         try:
-            conn, _ = fs.remote('discovery')
+            conn, _ = fs.remote(key)
             return [dict(name=s.name, comment=s.comments or '') for s in conn.listShares(timeout=15)
                     if s.type & 0xffff == 0]
         finally: fs.close()
@@ -251,7 +311,15 @@ class Service:
         with self.lock:
             if profile.get('remember') is True:
                 self.config['connections'][key] = clean
-                self.save()
+                try: self.save()
+                except credentials.CredentialError:
+                    self.config['connections'].pop(key, None)
+                    self.session_connections[key] = clean
+                    self.session_warnings[key] = ('Secure password storage is unavailable. The new SMB connection is '
+                                                  'available for this session only; its password was not saved.')
+                except Exception:
+                    self.config['connections'].pop(key, None)
+                    raise
             else: self.session_connections[key] = clean
         return dict(path='smb://' + key + '/', id=key)
 
@@ -259,6 +327,7 @@ class Service:
         with self.lock:
             self.config['connections'].pop(key, None)
             self.session_connections.pop(key, None)
+            self.session_warnings.pop(key, None)
             self.save()
         return True
 
@@ -364,14 +433,14 @@ class Service:
             if output: self.job['bytes'] += n
             self.job['work_bytes'] = self.job.get('work_bytes', 0) + n
             self.job['current'] = name
-            self.job['phase'] = 'Copying' if output and self.job['action'] == 'copy' else 'Extracting' if output else 'Preparing'
+            self.job['phase'] = {'copy': 'Copying', 'move': 'Moving / verifying', 'pack': 'Packing'}.get(self.job['action'], 'Extracting') if output else 'Preparing'
             now = time.monotonic()
             if n and (not self._speed_samples or now - self._speed_samples[-1][0] >= .1):
                 self._speed_samples.append((now, self.job['work_bytes']))
                 while len(self._speed_samples) > 2 and now - self._speed_samples[0][0] > 3: self._speed_samples.pop(0)
 
     def validate_job(self, action, sources, destination=None):
-        if action not in ('copy', 'extract', 'trash', 'delete', 'empty_trash'): raise ValueError('Unknown operation')
+        if action not in ('copy', 'move', 'pack', 'extract', 'trash', 'delete', 'empty_trash'): raise ValueError('Unknown operation')
         if not isinstance(sources, list) or (not sources and action != 'empty_trash') or len(sources) > 10000: raise ValueError('Select files first')
         if action == 'empty_trash' and sources: raise ValueError('Empty Trash does not accept paths')
         sources = list(dict.fromkeys(sources))
@@ -382,15 +451,35 @@ class Service:
             else:
                 split(p)
                 self._protect(p)
-        if action in ('copy', 'extract'):
+        if action in ('copy', 'move', 'pack', 'extract'):
             if archive.is_location(destination): raise ValueError('Choose a writable folder in the other panel. Archives are read-only.')
             split(destination)
+        if action in ('move', 'pack'):
+            fs = VFS(self.profiles())
+            try:
+                groups = {}
+                for p in sources:
+                    if moving.inside(fs, destination, p): raise ValueError('Choose a destination outside the selected folder')
+                    key, path = moving.identity(fs, p)
+                    groups.setdefault(key, []).append(path)
+                for paths in groups.values():
+                    seen = set()
+                    for path in paths:
+                        if path in seen: raise ValueError('Select each item only once')
+                        seen.add(path)
+                    for path in paths:
+                        ancestor = posixpath.dirname(path)
+                        while ancestor != posixpath.dirname(ancestor):
+                            if ancestor in seen: raise ValueError('Select the parent folder once, without also selecting its contents')
+                            ancestor = posixpath.dirname(ancestor)
+            finally: fs.close()
         if action == 'trash' and any(split(p)[0] for p in sources): raise ValueError('SMB files require permanent deletion')
         if action == 'delete' and any(not split(p)[0] for p in sources): raise ValueError('Local files must use Trash')
         return sources
 
-    def start(self, action, sources, destination=None):
+    def start(self, action, sources, destination=None, options=None):
         sources = self.validate_job(action, sources, destination)
+        options = packing.options(options) if action == 'pack' else None
         with self.lock:
             if self.job and self.job['status'] == 'running': raise ValueError('Another operation is already running')
             self.cancel.clear()
@@ -399,7 +488,7 @@ class Service:
                             total_bytes=0, work_bytes=0, total_work=0, phase='Preparing', speed=0, percent=0,
                             label=Path(split(archive.parse(sources[0])[0] if archive.is_location(sources[0]) else sources[0])[1]).name if sources else 'Trash')
             self._speed_samples = [(time.monotonic(), 0)]
-            self.executor.submit(self._work, action, sources, destination)
+            self.executor.submit(self._work, action, sources, destination, options)
             return self.job.copy()
 
     def _estimate_tree(self, fs, source, depth=0):
@@ -413,7 +502,11 @@ class Service:
 
     def _plan(self, fs, action, sources, destination):
         total = work = 0
-        if action in ('copy', 'extract'):
+        if action == 'pack':
+            self._packing_entries = packing.plan(fs, sources, destination, self.staging_progress)
+            total = sum(info['size'] for _, _, info in self._packing_entries if not info['directory'])
+            work = total * (2 if split(destination)[0] else 1)
+        elif action in ('copy', 'move', 'extract'):
             virtual = [p for p in sources if archive.is_location(p)]
             for source in dict.fromkeys(archive.parse(p)[0] for p in virtual):
                 members = [archive.parse(p)[1] for p in virtual if archive.parse(p)[0] == source]
@@ -428,7 +521,7 @@ class Service:
                 else:
                     size = self._estimate_tree(fs, source)
                     staged_remote = self.copy_resume is None and split(source)[0] and split(destination)[0]
-                    total += size; work += size * (2 if staged_remote else 1)
+                    total += size; work += size * (3 if action == 'move' else 2 if staged_remote else 1)
         with self.lock:
             self.job.update(total_bytes=total, total_work=work, work_bytes=0, bytes=0, phase='Starting')
             self._speed_samples = [(time.monotonic(), 0)]
@@ -467,12 +560,16 @@ class Service:
             d = os.path.realpath(dpath) if not dkey else dpath
             if d == s or d.startswith(s.rstrip('/') + '/'):
                 raise ValueError('Cannot copy a folder into itself')
-        if fs.exists(target): raise FileExistsError(name + ' already exists in the other panel. Rename it first.')
+        if moving.identity(fs, source) == moving.identity(fs, target):
+            raise ValueError('Source and destination are the same item. Choose another folder.')
+        record = self.replacement.prepare(fs, source, target) if self.replacement else None
+        if not self.replacement and fs.exists(target): raise FileExistsError(name + ' already exists in the other panel. Rename it first.')
         temporary = join(destination, '.fileexplorer-' + uuid.uuid4().hex + '.partial')
         try:
             self._copy_tree(fs, source, temporary)
             self.progress(0, source)
-            fs.rename(temporary, target)
+            if self.replacement: target = self.replacement.publish(fs, temporary, target, record)
+            else: fs.rename(temporary, target)
             return target
         finally:
             try:
@@ -506,7 +603,7 @@ class Service:
         names = [posixpath.basename(p) for p in members]
         if len(set(names)) != len(names): raise ValueError('Selected archive items have conflicting names')
         for name in names:
-            if fs.exists(join(destination, name)): raise FileExistsError(name + ' already exists in the other panel. Rename it first.')
+            if not self.replacement and fs.exists(join(destination, name)): raise FileExistsError(name + ' already exists in the other panel. Rename it first.')
         with tempfile.TemporaryDirectory(prefix='selected-', dir=self._archive_scratch) as stage:
             with self._archive_file(fs, source, self.staging_progress) as local:
                 archive.extract(local, stage, self.staging_progress, self.extraction_limit(), selected=members)
@@ -546,13 +643,21 @@ class Service:
             info.unlink(missing_ok=True)
             raise
 
-    def _work(self, action, sources, destination):
+    def _work(self, action, sources, destination, options=None):
         fs = VFS(self.profiles())
         scratch = tempfile.TemporaryDirectory(prefix='.fileexplorer-worker-', dir=self.settings_dir)
         self._archive_scratch = scratch.name
         self._archive_work_files = {}
         try:
             self._plan(fs, action, sources, destination)
+            if action == 'pack':
+                def uploading(size):
+                    with self.lock:
+                        self.job['total_work'] = self.job['work_bytes'] + size
+                        self.job['total_bytes'] += size
+                output = packing.create(fs, self._packing_entries, destination, options, self._archive_scratch, self.progress, uploading)
+                with self.lock: self.job.update(completed=len(sources), outputs=[output], status='done')
+                return
             if action == 'empty_trash':
                 self._empty_trash()
                 with self.lock: self.job.update(completed=1, status='done')
@@ -564,6 +669,11 @@ class Service:
                 if archive.is_location(source): continue
                 self.progress(0, source)
                 if action == 'copy': out = self._copy(fs, source, destination)
+                elif action == 'move':
+                    def verifying(n, name):
+                        self.staging_progress(n, name)
+                        with self.lock: self.job['phase'] = 'Moving / verifying'
+                    out = moving.move(fs, source, destination, self._copy, verifying, self.replacement)
                 elif action == 'extract': out = self._extract(fs, source, destination)
                 elif action == 'trash': out = self._trash(fs, source)
                 else:

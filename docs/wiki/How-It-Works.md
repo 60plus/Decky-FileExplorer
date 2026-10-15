@@ -298,15 +298,12 @@ their own copies of runtime files, so a plugin update does not stop their transf
 
 ## Source map
 
-Links below point to files in the public source tree. Components that have not
-yet been published are listed by name without a link.
-
 | Component | Source |
 | --- | --- |
 | Sidebar, Settings, Update and About | [src/index.tsx](../../src/index.tsx) |
 | Two-panel navigation and operations | [src/Explorer.tsx](../../src/Explorer.tsx) |
-| Copy choices and per-task progress | `src/Transfers.tsx` |
-| Conflict dialog and staged replacement | `src/ConflictDialog.tsx`, `conflicts.py` |
+| Copy choices and per-task progress | [src/Transfers.tsx](../../src/Transfers.tsx) |
+| Conflict dialog and staged replacement | [src/ConflictDialog.tsx](../../src/ConflictDialog.tsx), [conflicts.py](../../fileexplorer/conflicts.py) |
 | Text editor and native keyboard | [src/Editor.tsx](../../src/Editor.tsx), [keyboard layout](../../src/useKeyboardSpace.ts) |
 | Text selection and movement | [src/editorText.ts](../../src/editorText.ts) |
 | Image viewer and bounded raster reads | [src/ImageViewer.tsx](../../src/ImageViewer.tsx), [images.py](../../fileexplorer/images.py) |
@@ -316,12 +313,12 @@ yet been published are listed by name without a link.
 | Appearance settings | [src/appearance.tsx](../../src/appearance.tsx) |
 | Decky backend routes | [main.py](../../main.py) |
 | Operations and progress | [service.py](../../fileexplorer/service.py) |
-| Independent jobs, queue dispatcher and worker | [jobs.py](../../fileexplorer/jobs.py), `dispatcher.py`, [worker.py](../../fileexplorer/worker.py) |
+| Independent jobs, queue dispatcher and worker | [jobs.py](../../fileexplorer/jobs.py), [dispatcher.py](../../fileexplorer/dispatcher.py), [worker.py](../../fileexplorer/worker.py) |
 | Local and SMB filesystem access | [vfs.py](../../fileexplorer/vfs.py) |
 | Archive reader and extraction | [archive.py](../../fileexplorer/archive.py) |
 | Network discovery | [discovery.py](../../fileexplorer/discovery.py) |
 | Text decoding and saving | [editor.py](../../fileexplorer/editor.py) |
-| Recovery drafts and durable directory changes | `drafts.py`, `durable.py` |
+| Recovery drafts and durable directory changes | [drafts.py](../../fileexplorer/drafts.py), [durable.py](../../fileexplorer/durable.py) |
 | Shared Trash handling | [trash.py](../../fileexplorer/trash.py) |
 | Native notifications | [notifications.tsx](../../src/notifications.tsx) |
 | GitHub updates and boot deduplication | [updates.py](../../fileexplorer/updates.py), [Updates.tsx](../../src/Updates.tsx) |

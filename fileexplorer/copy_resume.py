@@ -3,10 +3,14 @@ import hashlib
 import io
 import json
 import os
+import posixpath
+import re
 from pathlib import Path
 import uuid
 
-from .vfs import join, split
+from .vfs import join, split, parent
+from .durable import sync_directory
+from . import conflicts
 
 CHUNK = 1024 * 1024
 
@@ -41,8 +45,9 @@ def signature(info): return [info['size'], info['modified']]
 
 
 class CopyResume:
-    def __init__(self, path, progress):
+    def __init__(self, path, progress, ask=None):
         self.path, self.progress = Path(path), progress
+        self.ask = ask
         self.records = {}
         if self.path.exists():
             with self.path.open('rb+') as journal:
@@ -55,7 +60,7 @@ class CopyResume:
                     source, kind, value = event['source'], event['kind'], event['value']
                     if kind == 'root':
                         old = self.records.setdefault(source, dict(files={}, directories=[]))
-                        old.update(value)
+                        self.records[source] = dict(files=old['files'], directories=old['directories'], **value)
                     elif kind == 'file': self.records[source]['files'][event['relative']] = value
                     elif kind == 'directory': self.records[source]['directories'].append(value)
 
@@ -66,9 +71,65 @@ class CopyResume:
         fd = os.open(self.path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
         with os.fdopen(fd, 'ab') as journal:
             journal.write((json.dumps(event) + '\n').encode()); journal.flush(); os.fsync(journal.fileno())
+        sync_directory(self.path.parent)
+
+    def discard(self, fs, sources, destination):
+        """Delete only recorded staging trees, never published outputs or sources.
+
+        Preflight every tree before deleting anything. Unknown files, links or
+        edited journal paths cause refusal rather than a recursive wildcard delete.
+        """
+        planned = []
+        for source, record in self.records.items():
+            stage = record['stage']
+            key, path = split(stage)
+            name = posixpath.basename(path)
+            if (source not in sources or record['target'] != join(destination, Path(split(source)[1]).name)
+                    or not re.fullmatch(r'\.fileexplorer-[a-f0-9]{32}\.partial', name)
+                    or stage != join(destination, name)):
+                raise ValueError('Partial-copy record does not match this operation. Nothing was removed.')
+            if not fs.exists(stage): continue  # Published targets are deliberately untouched.
+            allowed = {p: True for p in record['directories']}
+            allowed.update({p: False for p in record['files']})
+            def inspect(location, relative='', depth=0):
+                if depth > 128: raise ValueError('Partial folder nesting is too deep.')
+                info = fs.info(location)
+                if relative not in allowed or info['link'] or info['directory'] != allowed[relative] or not info.get('regular', True) and not info['directory']:
+                    raise ValueError('Partial copy contains changed or unrecognized items. Nothing was removed.')
+                if info['directory']:
+                    for entry in fs.listing(location): inspect(entry['path'], relative + '/' + entry['name'], depth + 1)
+                elif info['size'] > record['files'][relative]['signature'][0]:
+                    raise ValueError('Partial file changed. Nothing was removed.')
+                planned.append((stage, location, info))
+            inspect(stage)
+        for stage, location, before in planned:
+            # Check ancestors again before each non-recursive removal.
+            relative = split(location)[1][len(split(stage)[1]):].strip('/')
+            ancestor = stage
+            for part in relative.split('/')[:-1] if relative else []:
+                info = fs.info(ancestor)
+                if info['link'] or not info['directory']: raise ValueError('Partial folder changed during cleanup.')
+                ancestor = join(ancestor, part)
+            if location != stage:
+                info = fs.info(ancestor)
+                if info['link'] or not info['directory']: raise ValueError('Partial folder changed during cleanup.')
+            now = fs.info(location)
+            if now['link'] or now['directory'] != before['directory'] or not now['directory'] and signature(now) != signature(before):
+                raise ValueError('Partial copy changed during cleanup. Remaining items were kept.')
+            fs.remove_one(location, now['directory'])
+        for record in self.records.values():
+            publication = record.get('publication')
+            output = record.get('output', record['target'])
+            if parent(output) != parent(record['target']): raise ValueError('The copy destination changed.')
+            if publication and publication['phase'] in ('planned', 'parked') and fs.exists(publication['old']) and not fs.exists(output):
+                fs.rename(publication['old'], output)
+        return len(planned)
 
     def copy(self, fs, source, destination):
         target = join(destination, Path(split(source)[1]).name)
+        from .moving import identity
+        if identity(fs, source) == identity(fs, target):
+            raise ValueError('Source and destination are the same item. Choose another folder.')
         skey, spath = split(source); dkey, dpath = split(destination)
         if skey == dkey:
             a = os.path.realpath(spath) if not skey else spath
@@ -77,16 +138,21 @@ class CopyResume:
                 raise ValueError('Cannot copy a folder into itself')
         record = self.records.get(source)
         if record is None:
-            if fs.exists(target): raise FileExistsError(Path(spath).name + ' already exists in the other panel. Rename it first.')
             record = dict(source=source, target=target, stage=join(destination, '.fileexplorer-' + uuid.uuid4().hex + '.partial'), files={}, directories=[], ready=False, done=False)
+            publication = conflicts.choose(fs, source, target, self.ask, self.progress)
+            conflicts.apply_choice(record, publication)
             self.records[source] = record; self.save(record)
         if record['target'] != target: raise ValueError('The copy destination changed. Start a new copy.')
-        completed = record['done'] or record['ready'] and fs.exists(target)
+        target = record.get('output', target)
+        if parent(target) != parent(record['target']): raise ValueError('The copy destination changed. Start a new copy.')
+        completed = record['done'] or record['ready'] and not fs.exists(record['stage']) and fs.exists(target)
         actual = target if completed else record['stage']
         self.tree(fs, source, actual, record, '', completed)
         if not completed:
             record['ready'] = True; self.save(record)
-            fs.rename(record['stage'], target)
+            target = conflicts.publish(fs, record['stage'], target, record, self.save, self.ask, self.progress)
+        elif record.get('publication') and record['publication']['phase'] != 'complete':
+            target = conflicts.publish(fs, record['stage'], target, record, self.save, self.ask, self.progress)
         record['done'] = True; self.save(record)
         return target
 

@@ -48,8 +48,8 @@ def main():
         process = multiprocessing.Process(target=server, args=(str(shared), password))
         process.start()
         service = Service(home, root / 'settings')
-        def run(action, sources, target=None):
-            service.start(action, sources, target)
+        def run(action, sources, target=None, options=None):
+            service.start(action, sources, target, options)
             for _ in range(1200):
                 state = service.job_state()
                 if state['status'] != 'running':
@@ -94,6 +94,16 @@ def main():
                     import io
                     check = io.BytesIO(); fs_resume.read_to(output, check, lambda *_: None)
                     assert check.getvalue() == media_bytes
+                    discard_to = destination_path + '-discard'; fs_resume.mkdir(discard_to)
+                    discard_journal = root / f'discard-{number}.jsonl'
+                    try: CopyResume(discard_journal, interrupt).copy(fs_resume, source_path, discard_to)
+                    except OSError: pass
+                    else: raise AssertionError('Copy did not interrupt')
+                    partial = CopyResume(discard_journal, lambda *_: None)
+                    stages = [record['stage'] for record in partial.records.values()]
+                    partial.discard(fs_resume, [source_path], discard_to)
+                    assert not any(fs_resume.exists(stage) for stage in stages)
+                    assert fs_resume.exists(source_path) and fs_resume.exists(output)
             finally: fs_resume.close()
             image = (Path(__file__).parent / 'fixtures/images/sample.png').read_bytes()
             (shared / 'picture.png').write_bytes(image)
@@ -146,13 +156,45 @@ def main():
                 service.connect(dict(host='127.0.0.1', port=1445, share='TEST', username='fileexplorer-test', password='wrong'))
             except Exception: pass
             else: raise AssertionError('Wrong password accepted')
+            # Move only dedicated fixtures; a verified destination must exist
+            # before deleting a cross-filesystem source.
+            move_data = b'Move verification\x00\xff' * 120000
+            moving = home / 'move-local.bin'; moving.write_bytes(move_data)
+            run('move', [str(moving)], remote)
+            assert not moving.exists() and (shared / moving.name).read_bytes() == move_data
+            run('move', [join(remote, moving.name)], str(destination))
+            assert not (shared / moving.name).exists() and (destination / moving.name).read_bytes() == move_data
+            (shared / 'move-native.bin').write_bytes(move_data)
+            run('move', [join(remote, 'move-native.bin')], newfolder)
+            assert not (shared / 'move-native.bin').exists() and (shared / 'remote-copy/move-native.bin').read_bytes() == move_data
+            # A separately added login has its own credential name and ID.
+            alias = service.connect(dict(host='127.0.0.1', port=1445, share='TEST', username='fileexplorer-test',
+                                         password=password, remember=False))['path']
+            run('move', [join(newfolder, 'move-native.bin')], alias)
+            assert not (shared / 'remote-copy/move-native.bin').exists() and (shared / 'move-native.bin').read_bytes() == move_data
+            for number, selected, output in [
+                (1, [str(destination / moving.name)], remote),
+                (2, [join(remote, 'move-native.bin')], str(destination)),
+                (3, [join(remote, 'move-native.bin')], newfolder),
+            ]:
+                result = run('pack', selected, output, dict(format='zip', level=5, name='packed-' + str(number)))
+                fs = VFS(service.profiles())
+                try:
+                    with tempfile.TemporaryFile() as file:
+                        fs.read_to(result['outputs'][0], file, lambda *_: None); file.seek(0)
+                        with zipfile.ZipFile(file) as archive_file:
+                            assert archive_file.read(archive_file.namelist()[0]) == move_data
+                finally: fs.close()
             print(json.dumps(dict(status='passed', protocol='SMB2 loopback', bytes=source.stat().st_size,
                 sha256=hashlib.sha256(source.read_bytes()).hexdigest(), checks=['authenticated connect', 'upload',
                 'download', 'recursive download', 'remote-to-remote copy', 'mkdir', 'rename', 'delete',
                 'saved credential reconnect', 'password not returned to UI', 'wrong password rejected',
                 'enumerate disk shares', 'selected extraction to SMB', 'browse remote archive', 'selected extraction from SMB',
                 'edit SMB text preserving CRLF and whitespace', 'preview SMB image', 'preview image inside SMB archive',
-                'ranged SMB media stream', 'resume local-to-SMB', 'resume SMB-to-local', 'resume SMB-to-SMB'])))
+                'ranged SMB media stream', 'resume local-to-SMB', 'resume SMB-to-local', 'resume SMB-to-SMB',
+                'discard local-to-SMB staging', 'discard SMB-to-local staging', 'discard SMB-to-SMB staging',
+                'verified local-to-SMB move', 'verified SMB-to-local move', 'SMB rename move', 'verified cross-profile SMB move',
+                'pack local-to-SMB', 'pack SMB-to-local', 'pack SMB-to-SMB'])))
         finally:
             service.shutdown()
             process.terminate(); process.join(5)

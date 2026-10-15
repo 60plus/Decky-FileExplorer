@@ -1,14 +1,16 @@
 import { toaster } from '@decky/api';
-import { api } from './api';
+import { api, Conflict, Job } from './api';
+import { showConflict } from './ConflictDialog';
 import { explorerVisible } from './activity';
 import { Icon } from './Icon';
 import { UpdateCandidate } from './Updates';
 import { ConfirmDialog, openDialog, RecoveryDialog } from './dialogs';
 
-type Notice = { id: string; kind: string; label: string; milestone: number | string; error: string; recoverable: boolean };
+type Notice = { id: string; kind: string; label: string; milestone: number | string; error: string; recoverable: boolean; conflict?: Conflict };
 export function startNotifications(openExplorer: () => void) {
   let stopped = false, pending = false;
   let updatePending = false;
+  const conflicts = new Map<string, string>();
   const checkStartup = async () => {
     if (stopped || updatePending) return;
     updatePending = true;
@@ -27,18 +29,27 @@ export function startNotifications(openExplorer: () => void) {
       const events = await api<Notice[]>('notifications', { visible: explorerVisible() });
       if (stopped) return;
       for (const event of events) {
+        if (String(event.milestone).startsWith('conflict:') && event.conflict) {
+          conflicts.set(event.id, event.conflict.id);
+          continue;
+        }
         if (event.recoverable && ['error', 'cancelled'].includes(String(event.milestone)) && !explorerVisible()) {
           openDialog(<RecoveryDialog error={`${event.label}: ${event.error}`} openExplorer={openExplorer}
-            resume={async () => { await api('retry', { job_id: event.id, mode: 'resume' }); }}
+            resume={() => api<Job>('retry', { job_id: event.id, mode: 'resume' })}
             restart={() => openDialog(<ConfirmDialog title="Start the copy again?" description="Copy all selected items into a new FileExplorer retry folder in the original destination. Previous completed files and partial copies will be kept." action="Start again" submit={async () => { await api('retry', { job_id: event.id, mode: 'restart' }); }} />)} />);
           continue;
         }
-        const verb = event.kind === 'extract' ? 'Extracted' : 'Copied';
+        const verb = ({ extract: 'Extracted', move: 'Moved', pack: 'Packed' } as Record<string, string>)[event.kind] || 'Copied';
         toaster.toast({ title: 'FileExplorer', body: typeof event.milestone === 'number'
           ? `${verb} ${event.milestone}% of ${event.label}${event.milestone === 100 ? ' • Done' : ''}`
           : `${event.milestone === 'error' ? 'Operation failed' : 'Operation cancelled'}: ${event.label}`,
           subtext: typeof event.milestone === 'string' ? event.error : undefined,
           icon: <Icon size={24} />, logo: <Icon size={48} />, duration: 5000, playSound: false });
+      }
+      if (!explorerVisible()) for (const [id, conflictId] of conflicts) {
+        const job = await api<Job>('job', { job_id: id });
+        if (job.status !== 'running' || job.conflict?.id !== conflictId) conflicts.delete(id);
+        else if (showConflict(job, true, openExplorer)) { conflicts.delete(id); break; }
       }
     } catch { /* Reconnect on the next poll when Decky is reloading. */ }
     finally { pending = false; }

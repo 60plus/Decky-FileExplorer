@@ -1,7 +1,5 @@
 # <img src="images/icon.svg" width="36" height="36" alt=""> FileExplorer
 
-The screenshots and manual show the current development interface. The [latest public release](https://github.com/60plus/Decky-FileExplorer/releases/latest) may not include every feature shown yet.
-
 ![FileExplorer: Two panels. One controller.](images/cover.png)
 
 A simple, controller-friendly file manager for **SteamOS and Decky Loader**.

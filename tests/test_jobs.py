@@ -71,11 +71,59 @@ class JobTests(unittest.TestCase):
         import time
         self.state['updated'] = time.time()
         atomic_json(self.folder / 'state.json', self.state)
-        with self.assertRaisesRegex(ValueError, 'already running'): self.jobs.retry(self.state['id'], 'resume')
+        with self.assertRaisesRegex(ValueError, 'no longer'): self.jobs.retry(self.state['id'], 'resume')
 
     def test_cancel_confirmation_cannot_cancel_a_different_job(self):
         with self.assertRaisesRegex(ValueError, 'finished'): self.jobs.cancel('different-job')
         self.assertFalse((self.folder / 'cancel').exists())
+
+    def test_cancel_persists_explicit_keep_or_discard_choice(self):
+        import time
+        self.state.update(status='running', updated=time.time())
+        atomic_json(self.folder / 'state.json', self.state)
+        for keep in (True, False):
+            self.jobs.cancel(self.state['id'], keep_partial=keep)
+            self.assertEqual(json.loads((self.folder / 'cancel').read_text()), {'keep_partial': keep})
+        with self.assertRaises(ValueError): self.jobs.cancel(keep_partial='false')
+
+    def test_stopped_worker_becomes_pending_and_is_kept_during_pruning(self):
+        from types import SimpleNamespace
+        self.state.update(status='running', updated=0, recoverable=True)
+        atomic_json(self.folder / 'state.json', self.state)
+        with patch('fileexplorer.jobs.subprocess.run', return_value=SimpleNamespace(stdout='inactive\n')):
+            pending = self.jobs.pending()
+        self.assertEqual(pending[0]['id'], self.folder.name)
+        self.assertEqual(pending[0]['status'], 'error')
+        self.assertIn('power loss', pending[0]['error'])
+        for number in range(6):
+            folder = self.jobs.root / f'{number:032x}'; folder.mkdir()
+            atomic_json(folder / 'state.json', dict(id=folder.name, status='done'))
+        os.utime(self.folder, (1, 1))
+        self.jobs._prune(None)
+        self.assertTrue(self.folder.exists())
+
+    @unittest.skipUnless(os.name == 'posix', 'Linux detached workers')
+    def test_resume_an_older_checkpoint_after_another_operation(self):
+        from types import SimpleNamespace
+        root = Path(self.temp.name)
+        source = root / 'source'; source.write_text('source')
+        destination = root / 'target'; destination.mkdir()
+        self.state.update(status='cancelled', recoverable=True)
+        atomic_json(self.folder / 'state.json', self.state)
+        atomic_json(self.folder / 'plan.json', dict(action='copy', sources=[str(source)], destination=str(destination)))
+        (self.folder / 'copy.jsonl').write_bytes(b'')
+        other = self.jobs.root / ('b' * 32); other.mkdir()
+        atomic_json(other / 'state.json', dict(id=other.name, status='done'))
+        atomic_json(self.jobs.root / 'current.json', {'id': other.name})
+        with patch('fileexplorer.jobs.subprocess.run', return_value=SimpleNamespace(returncode=0)), patch('fileexplorer.jobs.shutil.copytree'):
+            new = self.jobs.retry(self.folder.name, 'resume')
+        self.assertEqual(json.loads((self.folder / 'state.json').read_text())['superseded_by'], new['id'])
+        self.assertEqual(self.jobs.pending(), [])
+
+    def test_forget_removes_job_scoped_credentials(self):
+        atomic_json(self.folder / 'connections.json', {'saved': {'password_credential': 'opaque'}, 'other': {'share': 'public'}})
+        self.jobs.forget_connection('saved')
+        self.assertEqual(json.loads((self.folder / 'connections.json').read_text()), {'other': {'share': 'public'}})
 
 
 if __name__ == '__main__': unittest.main()

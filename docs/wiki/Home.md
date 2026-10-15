@@ -1,7 +1,5 @@
 # FileExplorer user guide
 
-The screenshots and manual show the current development interface. The [latest public release](https://github.com/60plus/Decky-FileExplorer/releases/latest) may not include every feature shown yet.
-
 ![FileExplorer: Two panels. One controller.](../../images/cover.png)
 
 Manage files on your **SteamOS PC or handheld** without leaving Gaming Mode.

@@ -61,9 +61,24 @@ def main():
             with zipfile.ZipFile(z, 'w', zipfile.ZIP_DEFLATED) as out: out.writestr('folder/file.txt', 'archive worker\n')
             observer.start('extract', [str(z)], str(destination)); wait()
             assert (destination / 'sample/folder/file.txt').read_text() == 'archive worker\n'
+            assert [event['milestone'] for event in observer.notifications(False)] == [25, 50, 75, 100]
+            observer.start('pack', [str(source)], str(destination), options=dict(format='zip', level=1, name='packed'))
+            service.shutdown()
+            service = Service(home, root / 'settings'); observer = Jobs(service)
+            packed = wait()
+            assert packed['kind'] == 'pack'
+            assert [event['milestone'] for event in observer.notifications(False)] == [25, 50, 75, 100]
+            with zipfile.ZipFile(destination / 'packed.zip') as packed_archive:
+                assert packed_archive.testzip() is None
+                assert packed_archive.getinfo(source.name).file_size == source.stat().st_size
+            move_destination = home / 'moved'; move_destination.mkdir()
+            observer.start('move', [str(destination / 'packed.zip')], str(move_destination)); moved = wait()
+            assert moved['kind'] == 'move' and not (destination / 'packed.zip').exists()
+            assert (move_destination / 'packed.zip').exists()
             print(json.dumps(dict(status='passed', checks=['systemd worker survives client exit', '1 GiB content hash',
                 'durable progress', 'nonzero transfer speed', '25/50/75/100 milestones', 'notification acknowledgement survives reload',
-                'temporary credential request removed', 'archive extraction worker'], maximum_speed=maximum_speed,
+                'temporary credential request removed', 'archive extraction worker', 'packing worker survives client shutdown',
+                'packing notifications at 25/50/75/100', 'move worker'], maximum_speed=maximum_speed,
                 observed_percentages=sorted(set(percents)))))
         finally:
             state = observer.state()

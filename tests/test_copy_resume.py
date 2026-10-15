@@ -78,3 +78,36 @@ class ResumeTests(unittest.TestCase):
         partial.unlink(); partial.symlink_to(self.source / 'large.bin')
         with self.assertRaisesRegex(ValueError, 'partial copy'):
             CopyResume(self.journal, lambda *_: None).copy(self.fs, str(self.source), str(self.dest))
+
+    def test_discard_only_removes_recorded_staging_and_keeps_finished_outputs(self):
+        complete = self.root / 'finished.txt'; complete.write_text('keep')
+        CopyResume(self.journal, lambda *_: None).copy(self.fs, str(complete), str(self.dest))
+        record = self.interrupted()
+        copy = CopyResume(self.journal, lambda *_: None)
+        copy.discard(self.fs, [str(complete), str(self.source)], str(self.dest))
+        self.assertFalse(Path(record['stage']).exists())
+        self.assertEqual((self.dest / complete.name).read_text(), 'keep')
+        self.assertEqual((self.source / 'large.bin').read_bytes(), self.data)
+        copy.discard(self.fs, [str(complete), str(self.source)], str(self.dest))  # Retry is safe.
+
+    def test_discard_refuses_unrecognized_items_symlinks_and_foreign_paths(self):
+        record = self.interrupted(); stage = Path(record['stage'])
+        extra = stage / 'not-created-by-the-copy.txt'; extra.write_text('keep')
+        copy = CopyResume(self.journal, lambda *_: None)
+        with self.assertRaisesRegex(ValueError, 'unrecognized'): copy.discard(self.fs, [str(self.source)], str(self.dest))
+        self.assertTrue((stage / 'large.bin').exists()); self.assertEqual(extra.read_text(), 'keep')
+        extra.unlink()
+        copy.records[str(self.source)]['stage'] = str(self.source)
+        with self.assertRaisesRegex(ValueError, 'match'): copy.discard(self.fs, [str(self.source)], str(self.dest))
+        self.assertEqual((self.source / 'large.bin').read_bytes(), self.data)
+        copy.records[str(self.source)]['stage'] = str(stage)
+        (stage / 'large.bin').unlink(); (stage / 'large.bin').symlink_to(self.source / 'large.bin')
+        with self.assertRaisesRegex(ValueError, 'unrecognized'): copy.discard(self.fs, [str(self.source)], str(self.dest))
+
+    def test_torn_final_checkpoint_retains_prior_progress(self):
+        record = self.interrupted()
+        with self.journal.open('ab') as output: output.write(b'{"source":"power-cut')
+        copy = CopyResume(self.journal, lambda *_: None)
+        self.assertEqual(copy.records[str(self.source)]['stage'], record['stage'])
+        result = copy.copy(self.fs, str(self.source), str(self.dest))
+        self.assertEqual((Path(result) / 'large.bin').read_bytes(), self.data)

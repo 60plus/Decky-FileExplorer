@@ -2,7 +2,7 @@ import { DialogButton, DropdownItem, Focusable, GamepadButton, GamepadEvent, Mod
 import { ComponentType, RefObject, TextareaHTMLAttributes, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { api, message, TextFile } from './api';
 import { useAppearance, useModalStyle } from './appearance';
-import { ConfirmDialog, ErrorText, openDialog } from './dialogs';
+import { ChoiceDialog, ErrorText, openDialog } from './dialogs';
 import { Cursor, lineOffset, moveCursor, position, selectedText } from './editorText';
 import { Legend, stickHint } from './Legend';
 import { css } from './style';
@@ -14,6 +14,7 @@ type KeyboardHandle = { TakeFocusAndShowKeyboard: () => void; HideVirtualKeyboar
 const NativeTextArea = findModuleExport(value => value?.prototype?.InternalOnInput &&
   value.prototype.GetMaxHeight && value.prototype.OnPaste) as ComponentType<TextareaHTMLAttributes<HTMLTextAreaElement> & { refKeyboardHandle?: RefObject<KeyboardHandle>; noFocusRing?: boolean }> | undefined;
 type Snapshot = { text: string; cursor: Cursor };
+type Draft = Snapshot & { revision: string; encoding: string };
 const stop = (event: Event) => { event.preventDefault(); event.stopPropagation(); };
 
 export function Editor({ location, saved, closeModal }: { location: string; saved: () => void; closeModal?: () => void }) {
@@ -30,6 +31,10 @@ export function Editor({ location, saved, closeModal }: { location: string; save
   const restoringFocus = useRef(false);
   const [toolbarFocused, setToolbarFocused] = useState(false);
   const [toolbarHidden, setToolbarHidden] = useState(false);
+  const [draftStatus, setDraftStatus] = useState(''), [draftError, setDraftError] = useState('');
+  const draftEnabled = useRef(false), draftLast = useRef<string | null>(null);
+  const draftQueue = useRef<Promise<void>>(Promise.resolve());
+  const draftLive = useRef({ file, text, cursor }); draftLive.current = { file, text, cursor };
   const live = useRef({ text, cursor }); live.current = { text, cursor };
   const keyboard = useKeyboardSpace(root), appearance = useAppearance();
   useModalStyle(root, appearance);
@@ -91,11 +96,51 @@ export function Editor({ location, saved, closeModal }: { location: string; save
     else if (top + height > area.scrollTop + area.clientHeight - margin) area.scrollTop = top + height - area.clientHeight + margin;
     setScroll(area.scrollTop);
   }
+  function storeDraft() {
+    const current = draftLive.current;
+    if (!draftEnabled.current || !current.file) return draftQueue.current;
+    const signature = current.file.revision + '\0' + current.text;
+    if (signature === draftLast.current) return draftQueue.current;
+    draftLast.current = signature; setDraftStatus('Saving draft…');
+    const write = draftQueue.current.catch(() => {}).then(async () => {
+      if (current.text === current.file!.text) await api('discard_draft', { location });
+      else await api('save_draft', { location, text: current.text, revision: current.file!.revision, encoding: current.file!.encoding, cursor: current.cursor });
+      setDraftError(''); setDraftStatus(current.text === current.file!.text ? '' : 'Draft saved');
+    }).catch(e => {
+      if (draftLast.current === signature) draftLast.current = null;
+      setDraftStatus(''); setDraftError('Recovery draft was not saved: ' + message(e)); throw e;
+    });
+    draftQueue.current = write;
+    return write;
+  }
+  async function removeDraft() {
+    draftEnabled.current = false;
+    await draftQueue.current.catch(() => {});
+    try { await api('discard_draft', { location }); draftLast.current = null; setDraftStatus(''); setDraftError(''); }
+    catch (e) { draftEnabled.current = true; throw e; }
+  }
+  useEffect(() => {
+    const timer = window.setTimeout(() => void storeDraft().catch(() => {}), 400);
+    return () => window.clearTimeout(timer);
+  }, [text, file?.revision]);
+  useEffect(() => {
+    // Also checkpoint during continuous typing, which never reaches the debounce.
+    const timer = window.setInterval(() => void storeDraft().catch(() => {}), 1500);
+    return () => { window.clearInterval(timer); void storeDraft().catch(() => {}); };
+  }, []);
   async function load(codec = encoding) {
     setBusy(true); setError('');
     try {
-      const result = await api<TextFile>('read_text', { location, encoding: codec === 'auto' ? null : codec });
-      setFile(result); setText(result.text); setCursor({ anchor: 0, head: 0 }); history.current = []; focusLine(0);
+      const [result, draft] = await Promise.all([api<TextFile>('read_text', { location, encoding: codec === 'auto' ? null : codec }), api<Draft | null>('read_draft', { location })]);
+      setFile(result); setText(result.text); setCursor({ anchor: 0, head: 0 }); history.current = [];
+      if (draft && draft.text !== result.text) {
+        draftEnabled.current = false;
+        openDialog(<ChoiceDialog title="Recover unsaved text?" description={draft.revision === result.revision ? 'A recovery draft is available. Restore it to continue editing; the original file is unchanged.' : 'A draft is available, but the original file changed. You can recover the text; saving over the changed file will be blocked.'} dismiss={() => closeModal?.()} choices={[
+          { label: 'Restore draft', run: async () => { setFile({ ...result, revision: draft.revision, encoding: draft.encoding }); setText(draft.text); setCursor(draft.cursor); setNotice('Recovery draft restored.'); draftEnabled.current = true; focusLine(position(draft.text, draft.cursor.head).row); } },
+          { label: 'Discard draft', run: async () => { await removeDraft(); draftEnabled.current = true; focusLine(0); } },
+          { label: 'Close editor', run: async () => closeModal?.() },
+        ]} />);
+      } else { draftEnabled.current = true; if (draft) await api('discard_draft', { location }); focusLine(0); }
     } catch (e) { setError(message(e)); } finally { setBusy(false); }
   }
   useEffect(() => { void load(); }, []);
@@ -201,22 +246,29 @@ export function Editor({ location, saved, closeModal }: { location: string; save
     live.current.cursor = next; setCursor(next); setNotice(''); focusLine(position(text, next.head).row);
   }
   function leave() {
+    if (busy) return;
     if (editing) { finishEditing(); return; }
-    if (dirty) openDialog(<ConfirmDialog title="Discard unsaved changes?" description="The original file has not been changed." action="Discard" submit={async () => closeModal?.()} />);
+    if (dirty) openDialog(<ChoiceDialog title="Close editor?" description="Keep a recovery draft for later, or discard your edits. The original file has not been changed." choices={[
+      { label: 'Keep draft and close', run: async () => { await storeDraft(); draftEnabled.current = false; closeModal?.(); } },
+      { label: 'Discard changes', run: async () => { await removeDraft(); closeModal?.(); } },
+      { label: 'Continue editing', run: async () => {} },
+    ]} />);
     else closeModal?.();
   }
   async function save() {
     if (!file || busy || !dirty) return;
     setBusy(true); setError('');
     try {
+      const pending = storeDraft(); draftEnabled.current = false; await pending.catch(() => {});
       const result = await api<TextFile>('save_text', { location, text, revision: file.revision, encoding: file.encoding });
       setFile(result); history.current = []; editStarted.current = false; setNotice('Saved. Original formatting and encoding kept.'); saved();
+      try { await removeDraft(); } catch (e) { setDraftError('File saved, but the old recovery draft could not be removed: ' + message(e)); }
       if (!editing) focusLine(selected);
     } catch (e) {
       const value = message(e); setError(value);
       const match = value.match(/at line (\d+)/);
       if (match) { const offset = lineOffset(text, Number(match[1]) - 1); setCursor({ anchor: offset, head: offset }); if (editing) pendingCursor.current = { anchor: offset, head: offset }; else focusLine(Number(match[1]) - 1); }
-    } finally { setBusy(false); }
+    } finally { draftEnabled.current = true; setBusy(false); }
   }
   function renderedLine(line: string, row: number, offset: number) {
     const start = Math.max(0, Math.min(cursor.anchor, cursor.head) - offset), end = Math.min(line.length, Math.max(cursor.anchor, cursor.head) - offset);
@@ -252,7 +304,7 @@ export function Editor({ location, saved, closeModal }: { location: string; save
         <DialogButton className="fe-btn" onClick={leave}>{editing ? 'Back' : 'Close'}</DialogButton>
       </Focusable>}
       {!file && <div className="fe-encoding"><DropdownItem label="File encoding" selectedOption={encoding} rgOptions={['auto', 'utf-8', 'utf-16-le', 'utf-16-be', 'cp1250', 'cp1252', 'latin-1'].map(data => ({ data, label: data === 'auto' ? 'Auto (UTF-8 / BOM)' : data }))} onChange={o => { setEncoding(o.data); void load(o.data); }} /></div>}
-      <ErrorText text={error} />
+      <ErrorText text={error || draftError} />
       {editing ? <div className="fe-text-input">
         <div className="fe-editor-gutter" aria-hidden="true"><div style={{ transform: `translateY(${-scroll}px)` }}>{lines.map((_, row) => <div key={row} className={selected === row ? 'active' : ''}>{row + 1}</div>)}</div></div>
         <TextArea {...(NativeTextArea ? { refKeyboardHandle: keyboardHandle, noFocusRing: true } : {})} className="fe-editor-textarea" aria-label="File contents" value={text} wrap="off" spellCheck={false} autoCapitalize="off" autoCorrect="off" disabled={busy}
@@ -266,6 +318,7 @@ export function Editor({ location, saved, closeModal }: { location: string; save
           onActivate={e => { stop(e); edit(row); }}><span className="fe-line-number">{row + 1}</span><code>{renderedLine(line, row, start)}</code></Focusable>; })}
       </Focusable>}
       <div className="fe-status">{busy ? 'Working…' : notice || `Line ${selected + 1}, column ${position(text, cursor.head).column + 1}${cursor.anchor !== cursor.head ? ` • ${Math.abs(cursor.head - cursor.anchor)} characters selected` : ''} • ${editing ? 'Steam keyboard: Paste inserts clipboard text at the cursor' : 'Directions move the cursor • Copy uses the selection or current line'}`}</div>
+      {dirty && draftStatus && <div className="fe-draft-status" role="status">{draftStatus}</div>}
       <Legend />
     </Focusable>
   </ModalRoot>;

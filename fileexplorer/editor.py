@@ -14,6 +14,7 @@ from pathlib import Path
 
 from . import archive
 from .vfs import join, parent, split
+from .durable import sync_directory
 
 LIMIT = 512 * 1024
 ENCODINGS = {'utf-8', 'utf-16-le', 'utf-16-be', 'cp1250', 'cp1252', 'latin-1'}
@@ -132,6 +133,7 @@ def save(fs, location, text, revision, encoding=None):
                 os.chown(temporary, info.st_uid, info.st_gid)
             if read_bytes(fs, location) != raw: raise ValueError('The file changed before saving. Reopen it first.')
             os.replace(temporary, path)
+            sync_directory(os.path.dirname(path))
         finally:
             if os.path.exists(temporary): os.unlink(temporary)
     return read(fs, location, codec)

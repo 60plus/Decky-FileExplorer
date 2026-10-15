@@ -5,6 +5,8 @@ import socket
 import stat
 from pathlib import Path
 from urllib.parse import quote, unquote, urlsplit
+from .credentials import password_for
+from .durable import sync_directory
 
 CHUNK = 1024 * 1024
 
@@ -54,7 +56,7 @@ class VFS:
         if key not in self.connections:
             from smb.SMBConnection import SMBConnection
             host = profile['host']
-            conn = SMBConnection(profile.get('username', ''), profile.get('password', ''),
+            conn = SMBConnection(profile.get('username', ''), password_for(key, profile),
                                  'FileExplorer', host.split('.')[0], domain=profile.get('domain', ''),
                                  use_ntlm_v2=True, is_direct_tcp=True)
             try:
@@ -86,7 +88,7 @@ class VFS:
                         s = item.stat(follow_symlinks=False)
                         result.append(dict(name=item.name, path=item.path, directory=item.is_dir(),
                                            link=item.is_symlink(), size=s.st_size, modified=s.st_mtime,
-                                           hidden=item.name.startswith('.')))
+                                           hidden=item.name.startswith('.'), executable=bool(s.st_mode & 0o111)))
                     except (FileNotFoundError, PermissionError): continue
         if len(result) > 50000: raise ValueError('More than 50,000 entries. Open a smaller folder.')
         return result
@@ -99,7 +101,21 @@ class VFS:
             return dict(directory=item.isDirectory, link=False, size=item.file_size, modified=item.last_write_time)
         s = os.lstat(path)
         return dict(directory=stat.S_ISDIR(s.st_mode), link=stat.S_ISLNK(s.st_mode), size=s.st_size,
-                    regular=stat.S_ISREG(s.st_mode), modified=s.st_mtime_ns)
+                    regular=stat.S_ISREG(s.st_mode), modified=s.st_mtime_ns, mode=stat.S_IMODE(s.st_mode))
+
+    def remove_one(self, location, directory):
+        """Remove exactly one verified item, never recurse into a changed folder."""
+        key, path = split(location)
+        if key:
+            conn, share = self.remote(key)
+            if directory: conn.deleteDirectory(share, path, timeout=20)
+            else:
+                if any(c in path for c in '*?'): raise ValueError('Cannot delete an SMB filename containing wildcards')
+                conn.deleteFiles(share, path, timeout=20)
+        else:
+            if directory: os.rmdir(path)
+            else: os.unlink(path)
+            sync_directory(os.path.dirname(path))
 
     def exists(self, location):
         key, path = split(location)
@@ -113,7 +129,9 @@ class VFS:
         if key:
             conn, share = self.remote(key)
             conn.createDirectory(share, path, timeout=20)
-        else: os.mkdir(path)
+        else:
+            os.mkdir(path)
+            sync_directory(os.path.dirname(path))
 
     def rename(self, source, target):
         key, path = split(source)
@@ -132,6 +150,8 @@ class VFS:
                     errno = ctypes.get_errno()
                     raise OSError(errno, os.strerror(errno))
             else: os.rename(path, path2)
+            sync_directory(os.path.dirname(path2))
+            if os.path.dirname(path) != os.path.dirname(path2): sync_directory(os.path.dirname(path))
 
     def remove(self, location, progress):
         info = self.info(location)
@@ -189,3 +209,4 @@ class VFS:
                     progress(len(data), location)
                 output.flush()
                 os.fsync(output.fileno())
+            sync_directory(os.path.dirname(path))

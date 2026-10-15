@@ -72,9 +72,9 @@ Updates contain the complete plugin. You can skip intermediate releases.
 3. Wait for download verification, then confirm **Install** in Decky's prompt.
 4. Reopen FileExplorer's Update or About page to check the installed version.
 
-This capture uses a development build newer than the latest public release. The
-update check reports that correctly; **Download and install** appears only when
-a newer release is available.
+This screenshot was taken before the installed version was published. At capture
+time, there was no newer public version to download. **Download and install**
+appears when a newer release is available.
 
 ![Checking the installed version against the latest GitHub release](../../images/screenshots/pc-github-update-d683c5dec15f.png)
 

@@ -46,8 +46,8 @@ the focused file visible; the other panel can stay at its own position.
 Check the latest stable release, read the release notes and download the update.
 The ZIP is verified before Decky opens its installation prompt.
 
-The development build in this capture is newer than the public release, so the
-check correctly reports that no update is needed. Download controls appear when
+This screenshot was taken before the installed version was published. At capture
+time, the check correctly reported that no update was needed. Download controls appear when
 a newer public version is available. The installation prompt below uses the
 current local plugin ZIP and was cancelled after capture.
 

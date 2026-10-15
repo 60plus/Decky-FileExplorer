@@ -112,7 +112,8 @@ class BackendTests(unittest.TestCase):
 
     def test_settings_survive_restart_without_password_leak(self):
         self.service.config['connections']['test'] = dict(host='server', share='files', label='Test', password='example-secret')
-        self.service.update_settings({'show_hidden': True})
+        with patch('fileexplorer.credentials.seal_password', return_value='opaque-unit-test-credential'):
+            self.service.update_settings({'show_hidden': True})
         s = Service(self.home, self.root / 'settings')
         try:
             self.assertTrue(s.state()['settings']['show_hidden'])
