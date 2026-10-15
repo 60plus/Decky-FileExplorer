@@ -27,13 +27,13 @@ In Gaming Mode, open the quick-access menu, select **Decky** and open its
 **settings**. In **General**, scroll to **Other** and enable **Developer mode**.
 This is Decky Loader's setting.
 
-![Enable Developer mode in Decky Loader](../../images/decky-developer-mode.jpg)
+![Enable Developer mode in Decky Loader](../../images/screenshots/handheld-decky-developer-mode-6e6c63e56807.png)
 
 ## Install from a ZIP or a link
 
 Open **Developer** in Decky's settings sidebar.
 
-![Decky settings for installing a plugin from a ZIP file or URL](../../images/decky-install-options.jpg)
+![Decky settings for installing a plugin from a ZIP file or URL](../../images/screenshots/handheld-decky-install-options-499f7bf940ed.png)
 
 ### Option A: downloaded ZIP
 
@@ -51,10 +51,13 @@ Open **Developer** in Decky's settings sidebar.
 The public release download links work directly in Decky without a GitHub login.
 
 Return to Decky, open **FileExplorer**, then choose **Launch FileExplorer**.
-The two Decky settings screenshots are reused from the
-[DeckyCache installation guide](https://github.com/60plus/DeckyCache/wiki/Installation).
+The Decky settings screenshots show the same installation controls on a SteamOS handheld.
 
 ## First launch
+
+Follow the [first setup](First-Setup.md): welcome, Handheld or Steam PC profile,
+then editable settings. Select **Save** to open the file manager. Nothing changes
+until you save, and all options remain available in Settings afterward.
 
 Both panels start in your home folder unless remembered locations are available.
 Use **Locations** to choose Home, Downloads, a mounted drive or a network share.
@@ -69,9 +72,13 @@ Updates contain the complete plugin. You can skip intermediate releases.
 3. Wait for download verification, then confirm **Install** in Decky's prompt.
 4. Reopen FileExplorer's Update or About page to check the installed version.
 
-![Installed and available versions in the GitHub update page](../../images/screenshots/15-github-update-f2b9d6244506.png)
+This capture uses a development build newer than the latest public release. The
+update check reports that correctly; **Download and install** appears only when
+a newer release is available.
 
-![Decky's confirmation after the plugin ZIP passes verification](../../images/screenshots/16-verified-install-8c70d74d0335.png)
+![Checking the installed version against the latest GitHub release](../../images/screenshots/pc-github-update-d683c5dec15f.png)
+
+![Decky's confirmation for the current local plugin ZIP, cancelled after capture](../../images/screenshots/pc-verified-install-634bb1755a2a.png)
 
 FileExplorer checks GitHub when Decky starts and reports a newer stable release
 at most once per OS boot. Reloading Steam or the plugin does not repeat the notice.
@@ -83,7 +90,7 @@ You can also download the plugin ZIP from the [latest release](https://github.co
 and install it through Decky's Developer settings.
 
 Settings and remembered connections are stored separately from the plugin files.
-An already running copy or extraction has its own worker files and can continue
+An already running copy, move, extraction or packing job has its own worker files and can continue
 through a plugin reload or replacement. Notifications become available again
 when Steam and Decky are running. A system reboot still interrupts the operation.
 

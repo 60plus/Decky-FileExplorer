@@ -18,7 +18,7 @@ Extensionless names such as README, LICENSE, Makefile and Dockerfile, plus commo
 
 | SteamOS PC | SteamOS handheld |
 | --- | --- |
-| [![Text editor on PC](../../images/screenshots/pc-text-editor-69a07dff4a63.png)](../../images/screenshots/pc-text-editor-69a07dff4a63.png) | [![Text editor on handheld](../../images/screenshots/handheld-text-editor-04b6c7229072.png)](../../images/screenshots/handheld-text-editor-04b6c7229072.png) |
+| [![Text editor on PC](../../images/screenshots/pc-text-editor-eb56264c4a94.png)](../../images/screenshots/pc-text-editor-eb56264c4a94.png) | [![Text editor on handheld](../../images/screenshots/handheld-text-editor-cecc8a4658ed.png)](../../images/screenshots/handheld-text-editor-cecc8a4658ed.png) |
 
 The **whole editor panel shrinks above Steam's keyboard**, keeping the toolbar,
 active line, nearby text and status visible. The text scrolls as the cursor moves.
@@ -32,7 +32,7 @@ and [scaling examples](Handheld-Gallery.md#smaller-controls-in-the-same-window).
 
 | SteamOS PC | SteamOS handheld |
 | --- | --- |
-| [![Editor above Steam keyboard on PC](../../images/screenshots/pc-keyboard-5a4fc1f455bf.png)](../../images/screenshots/pc-keyboard-5a4fc1f455bf.png) | [![Editor above Steam keyboard on handheld](../../images/screenshots/handheld-keyboard-e9da23428780.png)](../../images/screenshots/handheld-keyboard-e9da23428780.png) |
+| [![Editor above Steam keyboard on PC](../../images/screenshots/pc-keyboard-3b28b937f8c1.png)](../../images/screenshots/pc-keyboard-3b28b937f8c1.png) | [![Editor above Steam keyboard on handheld](../../images/screenshots/handheld-keyboard-83574cf01b53.png)](../../images/screenshots/handheld-keyboard-83574cf01b53.png) |
 
 ## Select, copy and paste
 
@@ -43,7 +43,7 @@ Release the trigger to keep the selection, then press **View / Select** or choos
 
 | SteamOS PC | SteamOS handheld |
 | --- | --- |
-| [![Controller text selection on PC](../../images/screenshots/pc-text-selection-b0988bb31efc.png)](../../images/screenshots/pc-text-selection-b0988bb31efc.png) | [![Controller text selection on handheld](../../images/screenshots/handheld-text-selection-26ef16443cd7.png)](../../images/screenshots/handheld-text-selection-26ef16443cd7.png) |
+| [![Controller text selection on PC](../../images/screenshots/pc-text-selection-5d1e5fca048b.png)](../../images/screenshots/pc-text-selection-5d1e5fca048b.png) | [![Controller text selection on handheld](../../images/screenshots/handheld-text-selection-1bee12ac1d66.png)](../../images/screenshots/handheld-text-selection-1bee12ac1d66.png) |
 
 Move to the destination, press **A** and use **Paste** on Steam's keyboard.
 Pasting replaces selected text or inserts at the cursor. FileExplorer uses the
@@ -74,12 +74,39 @@ toolbar. Moving Up from the first line also reaches the toolbar.
 | Y / Save file | Save the pending changes |
 | Delete line | Remove the selected line |
 | Menu / Start / Undo | Undo a recent edit; up to 30 in-memory changes are retained |
-| B / Close | Leave the editor; unsaved changes require a discard confirmation |
+| B / Close | Leave the editor; choose to keep a draft, discard changes or continue editing |
 
 **Typing or hiding the keyboard does not save the file.** The header shows
 **Unsaved changes** until you save. Each keyboard editing session is one Undo
 step; line insertion and deletion have their own steps. Saving clears Undo history.
 Steam's glyphs follow the active controller; the names above use Xbox-style labels.
+
+## Recovery drafts
+
+FileExplorer saves a private recovery draft after **0.4 seconds without typing**,
+and every **1.5 seconds during continuous typing**. **Draft saved** confirms that
+the backend wrote it to disk. A draft may contain unfinished or invalid JSON;
+the original file is changed only by **Save file / Y**, with the normal checks.
+
+After a crash, empty battery or normal close with **Keep draft and close**, reopen
+the same file. Choose **Restore draft** to recover its text and cursor, **Discard
+draft** to remove it, or **Close editor** to leave it for later. On a normal close,
+**Discard changes** removes the draft; **Continue editing** returns to the editor.
+Successful Save removes the recovery draft too.
+
+| SteamOS PC | SteamOS handheld |
+| --- | --- |
+| [![Restore an unsaved text draft on pc](../../images/screenshots/pc-draft-recovery-2fad4cc796e1.png)](../../images/screenshots/pc-draft-recovery-2fad4cc796e1.png) | [![Restore an unsaved text draft on handheld](../../images/screenshots/handheld-draft-recovery-4231eddb03a9.png)](../../images/screenshots/handheld-draft-recovery-4231eddb03a9.png) |
+
+Drafts retain the original revision, so restoring a draft cannot silently
+overwrite a file changed by another program. Copy any edits you want to keep,
+then reopen the current file and apply them there. The source file must still be
+available; reconnect a drive or SMB share before opening its editor.
+
+Drafts are local files restricted to the Steam user, even when editing SMB text.
+They contain the edited text and are not encrypted. The latest typing may be
+lost if power disappears before a draft is acknowledged; storage damage can
+also prevent recovery. Undo history remains in memory and is not restored.
 
 ## What happens to formatting
 

@@ -22,6 +22,14 @@ HTML, SVG, RTF, Markdown and notebook files open as **source text**, without pag
 layout or rich formatting. Unknown text extensions can use **Options → Edit file**;
 binary data is rejected. Opening a script never executes it.
 
+**Archive creation:** ZIP, 7z, TAR, TAR.GZ, TAR.BZ2 and TAR.XZ. See
+[Archives](Archives.md) for compression choices and SMB output.
+
+**Steam shortcuts:** use Options → Add to Steam for EXE, COM, BAT, CMD, SH, BASH,
+ZSH, FISH, PY, PL, RB, AppImage, RUN, BIN and native executable files. This creates
+a library entry; pressing A on a script still opens its text. See
+[Steam integration](Steam-Integration.md) for compatibility and permissions.
+
 ## Complete text extension list
 
 These 238 extensions are recognized case-insensitively. They describe
@@ -77,4 +85,4 @@ its limits are recorded in [Testing](https://github.com/60plus/Decky-FileExplore
 
 | SteamOS PC | SteamOS handheld |
 | --- | --- |
-| [![Different icons for audio, video, text and unknown files on PC](../../images/screenshots/pc-media-file-icons-c2990a71ad86.png)](../../images/screenshots/pc-media-file-icons-c2990a71ad86.png) | [![Different icons for audio, video, text and unknown files on handheld](../../images/screenshots/handheld-media-file-icons-11b1b3431f94.png)](../../images/screenshots/handheld-media-file-icons-11b1b3431f94.png) |
+| [![Different icons for audio, video, text and unknown files on PC](../../images/screenshots/pc-media-file-icons-9c1f76a170f7.png)](../../images/screenshots/pc-media-file-icons-9c1f76a170f7.png) | [![Different icons for audio, video, text and unknown files on handheld](../../images/screenshots/handheld-media-file-icons-8ffe0ce5207f.png)](../../images/screenshots/handheld-media-file-icons-8ffe0ce5207f.png) |

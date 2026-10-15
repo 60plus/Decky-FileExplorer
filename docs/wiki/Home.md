@@ -1,5 +1,7 @@
 # FileExplorer user guide
 
+The screenshots and manual show the current development interface. The [latest public release](https://github.com/60plus/Decky-FileExplorer/releases/latest) may not include every feature shown yet.
+
 ![FileExplorer: Two panels. One controller.](../../images/cover.png)
 
 Manage files on your **SteamOS PC or handheld** without leaving Gaming Mode.
@@ -15,10 +17,12 @@ results. Steam supplies the button glyphs for the active controller.
 | I want to… | Guide |
 | --- | --- |
 | Install the plugin or update the installed ZIP | [Installation](Installation.md) |
+| Choose a Handheld or Steam PC profile and customize it | [First setup](First-Setup.md) |
 | Learn the controls and use the two panels | [Everyday use](Daily-Use.md) |
 | Set up the layout, keyboard and controller hints on a handheld | [Handheld guide](Handheld-Guide.md) |
-| Copy files and leave a transfer running | [Copying and background jobs](Copy-and-Background-Jobs.md) |
-| Open an archive and extract only what I need | [Archives](Archives.md) |
+| Copy or move files and leave a transfer running | [Copying and background jobs](Copy-and-Background-Jobs.md) |
+| Create an archive, browse it or extract selected files | [Archives](Archives.md) |
+| Add a non-Steam application or open a game's folder | [Steam integration](Steam-Integration.md) |
 | Edit TXT, CFG, JSON or other small text files | [Text editor](Text-Editor.md) |
 | View pictures and switch between them with the controller | [Image viewer](Image-Viewer.md) |
 | Play audio and video with the controller | [Media player](Media-Player.md) |
@@ -42,7 +46,7 @@ the notifications report **25%, 50%, 75% and completion**.
 
 | SteamOS PC | SteamOS handheld |
 | --- | --- |
-| [![Two file panels on PC](../../images/screenshots/01-two-panels-c446ee4897f4.png)](../../images/screenshots/01-two-panels-c446ee4897f4.png) | [![Two file panels on handheld](../../images/screenshots/handheld-01-two-panels-c2e9c0a15101.png)](../../images/screenshots/handheld-01-two-panels-c2e9c0a15101.png) |
+| [![Two file panels on PC](../../images/screenshots/pc-two-panels-c507ff7187f6.png)](../../images/screenshots/pc-two-panels-c507ff7187f6.png) | [![Two file panels on handheld](../../images/screenshots/handheld-two-panels-f825575c3911.png)](../../images/screenshots/handheld-two-panels-f825575c3911.png) |
 
 ## What this version includes
 

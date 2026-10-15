@@ -47,9 +47,9 @@ See the [handheld guide](Handheld-Guide.md) for the settings and examples.
 
 ## Background job lifecycle
 
-1. The backend validates the operation and refuses a second job while one runs.
+1. The backend validates the operation. Copy submissions persist one task per selected top-level item, the batch concurrency limit and any queue dependency. A cross-process lock enforces the global limit of five active copies.
 2. It creates a private job directory and copies the worker code and Python
-   dependencies there. The worker therefore does not depend on files being
+   dependencies there (one shared snapshot per batch). The worker therefore does not depend on files being
    replaced in the installed plugin directory during an update.
 3. `systemd-run --user` starts a transient service named
    `fileexplorer-job-<id>`, running the system Python interpreter.
@@ -58,22 +58,83 @@ See the [handheld guide](Handheld-Guide.md) for the settings and examples.
 5. It atomically updates progress on disk about every 200 ms, recording completion,
    failure or cancellation. The open window polls the status every 500 ms.
 
+A detached `fileexplorer-queue-<id>` service fills free slots and respects each
+batch's 1-5 copy limit. Adding to the queue records a dependency on all earlier
+pending tasks; parallel submissions can use slots alongside them. Dispatcher
+instances serialize through a file lock, so backend reloads do not duplicate
+launches. Non-copy operations remain exclusive. Queue requests survive closing
+the window and include encrypted credentials rather than plaintext passwords.
+
 The manager stores the current job ID, state and notification acknowledgements
 under the plugin's settings directory. Reopening the UI or reloading the plugin
 reads that state instead of starting the transfer again. Older completed job
-directories are pruned as new jobs begin, keeping the most recent five.
+directories are pruned as new jobs begin. Unfinished copy and cleanup tasks are
+retained independently of the recent-job limit and listed in Interrupted copies.
 
-A reboot or stopped user session interrupts the worker. The manager detects a stale running state when its systemd service is no longer active. Copies additionally record an append-only checkpoint journal and a credential-free plan. The latest interrupted copy can be resumed explicitly; nothing resumes automatically. Extraction has no resume journal.
+A reboot or stopped user session interrupts the worker. The manager detects a stale running state when its systemd service is no longer active. Waiting tasks from another boot are paused until **Resume queue**. Copies additionally record an append-only checkpoint journal and a credential-free plan. Any retained interrupted copy can be resumed explicitly; nothing resumes automatically after shutdown. Extraction, moving and packing have no resume journal.
+
+## Moving, packing and Steam shortcuts
+
+Moves within a filesystem use collision-refusing renames, with an explicit
+conflict decision when the destination exists. Cross-filesystem moves
+copy, compare source/destination hashes, then remove only verified original
+items. Directory cleanup uses an empty-directory removal rather than a recursive
+delete, so newly created files are retained. Cancellation can leave a partial
+move, with already completed files in the destination.
+
+Packing uses the system libarchive writer for ZIP, 7z and TAR with optional gzip,
+bzip2 or xz filters. Sources are streamed in bounded chunks, including SMB range
+reads. A temporary archive is published by rename only after the writer closes
+successfully. SMB output stages the archive locally before uploading it.
+
+Non-Steam shortcuts use Steam's own `Apps.AddShortcut` and field setters. The
+backend validates the selected local file and prepares the target, working
+directory and script arguments without running the file. The game-menu button
+uses Steam's app details to find the executable or installation folder. Its
+scoped React patch preserves native menu controls and is removed on unload.
 
 ## Copy staging, speed and notifications
 
 The worker estimates the selected data before copying. Each top-level item is
 written under a temporary name in the destination and renamed only after that
-item is complete. Existing destination names are refused. On failure, earlier
+item is complete. Existing destination names wait for a rename, backup, overwrite
+or cancel decision. On failure, earlier
 completed items and resumable partial copies remain. Resume compares every saved byte with the source before appending, checks source size and modification time, and verifies completed-file hashes. Start again creates a separate destination folder and leaves previous output intact.
 
 Resumable SMB-to-SMB copies relay bounded chunks in memory. Selected archive extraction stages its output locally before copying it to the final destination. Progress counts those work stages; speed is a recent rate of bytes
 processed, rather than a promise about disk or network throughput.
+
+Conflict requests and responses are private job files with a unique conflict ID.
+The worker waits without depending on an open window; stale responses are refused.
+The frontend opens one conflict dialog at a time and lets a user leave it waiting.
+Waiting copies occupy their active slot, while independent slots keep working.
+Renaming records a separate output name in the copy journal, so checkpoints still
+refer to the original source and planned destination folder. A collision at the
+new name asks again. Resume at a conflict rechecks the destination; it never
+implicitly authorizes replacement. Start again first stops the waiting worker,
+then uses a fresh retry folder. This can restart remaining move items, but does
+not resume an interrupted cross-filesystem move's partial bytes.
+
+Replacement first records the old destination's metadata and a free backup name.
+Once the new copy is ready, it renames the old item to that backup and publishes
+the new item with another collision-refusing rename. Backup mode retains the old
+item; overwrite mode removes only its recorded tree and refuses unfamiliar files
+or links. Folders are replaced whole. A changed destination requires a new choice.
+Copy journals record each publication phase so resume can verify the new data and
+finish a replacement interrupted between renames. Failed publication restores
+the old name when it remains free. Moving has no automatic resume; an abrupt
+interruption may leave staged data or a backup for inspection. These precautions
+do not guarantee recovery from filesystem or SMB-server storage damage.
+
+Cancellation writes a durable choice to keep or remove partial copies. Removal
+preflights the journal-owned staging trees and uses individual unlink/rmdir
+operations, refusing unknown entries and links. Completed published targets are
+not cleanup targets. A failed cleanup remains available for retry.
+
+Local file writes, journal appends and atomic state replacements are flushed,
+including containing-directory changes. A torn final journal append is ignored;
+the last complete records drive verification on resume. These precautions do
+not guarantee against storage damage or an SMB server losing acknowledged data.
 
 The worker records the **25 / 50 / 75 / 100** milestones. A plugin-level notifier
 polls once per second and uses Decky's native toast API with the FileExplorer
@@ -106,15 +167,37 @@ the host chosen in the connection form.
 
 The virtual filesystem uses `pysmb` for direct SMB2 connections with NTLMv2.
 Remembered profiles are stored in `settings.json`; the settings directory has
-mode **0700** and the file **0600**. Passwords are omitted from state returned
-to the UI. These permissions restrict access by other users; they do not encrypt
-credentials against programs running as the same Steam user.
+mode **0700** and the file **0600**. The `password_credential` field holds an
+authenticated AES-256-GCM credential produced by `systemd-creds --user`, scoped
+to the Steam user and named for that connection ID. Plaintext travels only over
+process pipes, not command-line arguments or temporary files. The systemd
+credential broker handles access to system keys without elevating the plugin.
 
-Session-only profiles stay in backend memory. A job receives only the profiles
-needed for its source and destination through its private temporary request file.
-The worker deletes that file after loading it, retaining credentials in memory
-while the job runs. Mounted shares instead use the operating system's existing
-mount and session. FileExplorer does not read KDE Wallet or manage `/etc/fstab`.
+Systemd selects TPM plus its root-owned host key when both are available, or
+the host key on systems without TPM. FileExplorer accepts only known user-scoped
+host-key formats and rejects null-key, unscoped and unknown formats. Both stored
+ciphertext and passwords are omitted from UI state. The same logged-in user can
+request decryption, so this does not isolate passwords from other programs
+running as that user. See the [systemd credentials documentation](https://systemd.io/CREDENTIALS/).
+
+Legacy profiles migrate together: every nonempty password must encrypt and
+decrypt successfully before an atomic replacement removes plaintext from the
+settings file. Failure preserves the original and displays a migration warning.
+No plaintext backup is written. New saves fail over to a visibly session-only
+connection if encryption is unavailable. TPM-bound credentials cannot be
+recovered by switching to a host key after losing access to the TPM.
+
+Session-only passwords stay in backend memory. A background job receives only
+the profiles needed for its source and destination; their passwords are encrypted
+before writing the private request file, including session-only connections.
+The worker deletes that request after loading it and decrypts credentials as
+needed. Resumable copies also retain an encrypted `connections.json` scoped to
+the unfinished job, including session-only logins. Resume transfers that snapshot
+to the new job; completion or successful removal deletes it. Forgetting a saved
+connection removes its snapshots from retained jobs. The worker refuses to start
+without secure handoff support. Mounted shares use
+the operating system's existing mount and session. FileExplorer does not read
+KDE Wallet or manage `/etc/fstab`.
 
 ## Image preview
 
@@ -155,6 +238,15 @@ to a backup and then installs the replacement. The backup is removed after
 success; an interrupted remote save can require recovery from the reported
 backup. These checks detect ordinary conflicts but are not a distributed lock
 against other writers.
+
+Recovery drafts are separate from original-file saves. The UI debounces writes
+by 400 ms, with a 1.5-second checkpoint during continuous typing and a flush on
+Keep draft and close. Writes are serialized. Each draft includes text, original
+revision, encoding and cursor offsets; it does not contain Undo history. The
+backend atomically replaces a mode-0600 draft under a mode-0700 directory and
+flushes both file and directory before acknowledging. Incomplete syntax is
+allowed in drafts. Restoring preserves the original revision for conflict checks.
+The text is not encrypted; these filesystem permissions limit access to the user.
 
 ## Editor, keyboard and clipboard
 
@@ -206,10 +298,15 @@ their own copies of runtime files, so a plugin update does not stop their transf
 
 ## Source map
 
+Links below point to files in the public source tree. Components that have not
+yet been published are listed by name without a link.
+
 | Component | Source |
 | --- | --- |
 | Sidebar, Settings, Update and About | [src/index.tsx](../../src/index.tsx) |
 | Two-panel navigation and operations | [src/Explorer.tsx](../../src/Explorer.tsx) |
+| Copy choices and per-task progress | `src/Transfers.tsx` |
+| Conflict dialog and staged replacement | `src/ConflictDialog.tsx`, `conflicts.py` |
 | Text editor and native keyboard | [src/Editor.tsx](../../src/Editor.tsx), [keyboard layout](../../src/useKeyboardSpace.ts) |
 | Text selection and movement | [src/editorText.ts](../../src/editorText.ts) |
 | Image viewer and bounded raster reads | [src/ImageViewer.tsx](../../src/ImageViewer.tsx), [images.py](../../fileexplorer/images.py) |
@@ -219,11 +316,12 @@ their own copies of runtime files, so a plugin update does not stop their transf
 | Appearance settings | [src/appearance.tsx](../../src/appearance.tsx) |
 | Decky backend routes | [main.py](../../main.py) |
 | Operations and progress | [service.py](../../fileexplorer/service.py) |
-| Independent jobs and worker | [jobs.py](../../fileexplorer/jobs.py), [worker.py](../../fileexplorer/worker.py) |
+| Independent jobs, queue dispatcher and worker | [jobs.py](../../fileexplorer/jobs.py), `dispatcher.py`, [worker.py](../../fileexplorer/worker.py) |
 | Local and SMB filesystem access | [vfs.py](../../fileexplorer/vfs.py) |
 | Archive reader and extraction | [archive.py](../../fileexplorer/archive.py) |
 | Network discovery | [discovery.py](../../fileexplorer/discovery.py) |
 | Text decoding and saving | [editor.py](../../fileexplorer/editor.py) |
+| Recovery drafts and durable directory changes | `drafts.py`, `durable.py` |
 | Shared Trash handling | [trash.py](../../fileexplorer/trash.py) |
 | Native notifications | [notifications.tsx](../../src/notifications.tsx) |
 | GitHub updates and boot deduplication | [updates.py](../../fileexplorer/updates.py), [Updates.tsx](../../src/Updates.tsx) |

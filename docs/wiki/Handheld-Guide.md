@@ -20,7 +20,33 @@ through its files. **A** opens a folder or supported preview, **X** selects item
 and **Y** copies them into the other panel. **Menu / Start** opens file options.
 Steam draws the glyphs for the active controller.
 
-![Two file panels on a SteamOS handheld](../../images/screenshots/handheld-01-two-panels-c2e9c0a15101.png)
+File and folder dates appear beside their sizes, including on a small screen.
+Use **Options → Sort by… → Date modified (newest first)** to find recent items.
+
+The Options menu separates file actions and current-folder actions into two
+columns. Use all four directions to navigate. Copy/move confirmations have a
+centered information heading and a separate destination card. If the name already
+exists, the interruption dialog has six buttons in two columns: **Resume**, **Start
+again**, **Change name**, **Overwrite**, **Cancel** and **Open FileExplorer**. Overwrite
+asks whether to retain a backup. See [copying and conflicts](Copy-and-Background-Jobs.md#existing-files-cancellation-and-interrupted-copies).
+
+Use **B** to go back one menu level. Cancelling Rename, New folder or Empty Trash
+returns to Options and restores the focused button. Add SMB share and Enter path
+return to Locations, then another B returns to Options.
+
+Press **R3** to reach the top toolbar without scrolling to the first file.
+During a transfer, the next R3 reaches Cancel and Transfers; another R3 returns
+to your row. Without a transfer, the second R3 returns directly. **L3** hides or shows only the
+toolbar, giving the file lists more space while keeping your chosen legend mode.
+R3 also reveals a hidden toolbar. Steam's panel-switch hints use **Left** and
+**Right** to leave space for the stick shortcuts.
+
+The [Handheld setup profile](First-Setup.md) starts at 70% scale, with the toolbar
+hidden and controller hints inside FileExplorer. You can edit every value before
+saving and later in Settings. X selects an item and moves to the next one;
+vertical menus and file lists wrap from their first item to their last and back.
+
+![Two file panels on a SteamOS handheld](../../images/screenshots/handheld-two-panels-f825575c3911.png)
 
 For archives, **A** enters the archive, **X** selects its contents and **Y**
 extracts them into the other panel. See [Everyday use](Daily-Use.md) and
@@ -29,7 +55,7 @@ extracts them into the other panel. See [Everyday use](Daily-Use.md) and
 ## Make more room without shrinking the window
 
 1. Open **Decky → FileExplorer → Settings → Interface scale**.
-2. Choose **90%, 80% or 70%** for smaller controls, or **100%** for the default.
+2. Choose **70%, 80%, 90% or 100%**. Handheld starts at 70%; Steam PC starts at 100%.
 3. Reopen FileExplorer to apply the appearance settings.
 4. Adjust **Text size** separately if file names or editor text need to be larger.
 
@@ -37,7 +63,7 @@ The outer window keeps its available size. A smaller interface scale fits more
 content into it, including in the text editor and media player. For an initial
 comparison, try 80%, then keep the size that is comfortable to read on your screen.
 
-![Interface scale in the handheld sidebar](../../images/screenshots/handheld-17-scale-setting-0820bec3fafd.png)
+![Interface scale in the handheld sidebar](../../images/screenshots/handheld-scale-setting-e2823cf587f5.png)
 
 Settings remain in Decky's compact sidebar. Use **up/down** to choose a setting,
 **left/right** to change a slider and **X** to expand its explanation. Moving
@@ -66,9 +92,13 @@ fit above the keyboard, scrolling the active line into view.
   **View / Select** to copy. Open Steam's keyboard and choose **Paste** to insert it.
   While that keyboard is open, RT/R2 belongs to its Enter action.
 
-![Editor at 80 percent scale with the toolbar hidden above the keyboard](../../images/screenshots/handheld-scaled-keyboard-9542e7a3a971.png)
+![Editor at 80 percent scale with the toolbar hidden above the keyboard](../../images/screenshots/handheld-scaled-hidden-toolbar-b73d5ba87503.png)
 
 See [Text editor](Text-Editor.md) for formatting, encodings and limits.
+
+The editor automatically saves a recovery draft while you type. If the battery
+runs out, reopen the same file and choose **Restore draft**. **Draft saved**
+confirms the last checkpoint; **Y / Save** is still required to change the original.
 
 ## Pictures, audio and video
 
@@ -83,14 +113,39 @@ See [Image viewer](Image-Viewer.md), [Media player](Media-Player.md) and the
 
 ## Transfers and network shares
 
+Transfers do not block file selection, the editor or media playback. Choose
+sequential copying or up to **5** parallel tasks for a multi-item selection.
+Starting another copy offers **Copy in parallel / Add to queue / Cancel**.
+The bottom progress area splits between active tasks; **Transfers** opens the
+full list, including waiting tasks. After a restart, choose **Resume queue** for
+items that had not started, and **Interrupted copies** for interrupted workers.
+
 The handheld has the same [SMB discovery and connection controls](Network-Shares.md)
-as the PC. Both panels can use a local folder or SMB share. A copy or extraction
+as the PC. Both panels can use a local folder or SMB share. Copying, moving, packing and extraction
 continues when FileExplorer closes, with progress notifications at 25%, 50%, 75%
 and completion. Keep the device awake and the source and destination available.
 Closing the panel is different from shutting down, restarting or ending the
 SteamOS user session, which interrupts the worker.
 
-A failed background copy offers Resume, Start again, Cancel and Open FileExplorer.
+A failed background copy offers Resume, Start again, Change name, Overwrite,
+Cancel and Open FileExplorer. Change name and Overwrite are enabled for name
+conflicts. Overwrite opens a second choice to keep a backup or replace permanently.
+When stopping a copy yourself, choose **Keep for later** or **Remove partial files**.
+After a shutdown or another operation, **Options → Interrupted copies** lists
+retained tasks. Resume verifies saved bytes first; it does not restart automatically.
 See [Copying and background jobs](Copy-and-Background-Jobs.md) for recovery details
 and actual handheld extraction notifications. For display or control issues, use
 [Troubleshooting](Troubleshooting.md#handheld-display-and-controls).
+
+## Move, pack and add to Steam
+
+Press **Menu / Start** on a file or selection for **Move to other panel** and
+**Create archive…**. Packing lets you choose a name, destination, format and
+compression level. On a small screen, the fields scroll while the Create/Cancel
+buttons stay at the bottom. Read [Archives](Archives.md) for the formats and
+[background jobs](Copy-and-Background-Jobs.md) for move verification and cancellation.
+
+Executable files and scripts also offer **Add to Steam…**. While a game is
+running, its Steam menu includes **Open in FileExplorer** below View game details.
+Both use native controller navigation. See [Steam integration](Steam-Integration.md)
+for launch permissions, Windows compatibility and network drive requirements.

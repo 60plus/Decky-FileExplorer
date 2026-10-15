@@ -2,10 +2,12 @@
 
 - [Manual home](Home.md)
 - [Installation and updates](Installation.md)
+- [First setup and profiles](First-Setup.md)
 - [Everyday use](Daily-Use.md)
 - [Handheld guide](Handheld-Guide.md)
 - [Copying and background jobs](Copy-and-Background-Jobs.md)
 - [Archives](Archives.md)
+- [Steam integration](Steam-Integration.md)
 - [Text editor](Text-Editor.md)
 - [Image viewer](Image-Viewer.md)
 - [Media player](Media-Player.md)

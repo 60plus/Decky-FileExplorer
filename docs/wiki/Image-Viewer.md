@@ -17,7 +17,7 @@ Steam's header and controller controls.
 
 | SteamOS PC | SteamOS handheld |
 | --- | --- |
-| [![Image preview on PC](../../images/screenshots/13-image-viewer-b9b28a6b4bd2.png)](../../images/screenshots/13-image-viewer-b9b28a6b4bd2.png) | [![Image preview on handheld](../../images/screenshots/handheld-06-image-34c223c97b74.png)](../../images/screenshots/handheld-06-image-34c223c97b74.png) |
+| [![Image preview on PC](../../images/screenshots/pc-image-viewer-a75b84e35404.png)](../../images/screenshots/pc-image-viewer-a75b84e35404.png) | [![Image preview on handheld](../../images/screenshots/handheld-image-viewer-2f8dad58f33f.png)](../../images/screenshots/handheld-image-viewer-2f8dad58f33f.png) |
 
 The header shows the filename, its position in the folder's image list, dimensions
 and file size. The viewer uses the panel's current sort order and hidden-file
@@ -33,7 +33,7 @@ that archive folder.
 
 | SteamOS PC | SteamOS handheld |
 | --- | --- |
-| [![Image inside an archive on PC](../../images/screenshots/14-archive-image-ef37a7c65758.png)](../../images/screenshots/14-archive-image-ef37a7c65758.png) | [![Image inside an archive on handheld](../../images/screenshots/handheld-07-archive-image-99f769bea171.png)](../../images/screenshots/handheld-07-archive-image-99f769bea171.png) |
+| [![Image inside an archive on PC](../../images/screenshots/pc-archive-image-6f938b6f1c25.png)](../../images/screenshots/pc-archive-image-6f938b6f1c25.png) | [![Image inside an archive on handheld](../../images/screenshots/handheld-archive-image-7ec3c216b3f7.png)](../../images/screenshots/handheld-archive-image-7ec3c216b3f7.png) |
 
 Previewing leaves the source unchanged. An archive preview temporarily extracts
 only the selected image and cleans up that temporary file. An archive stored on

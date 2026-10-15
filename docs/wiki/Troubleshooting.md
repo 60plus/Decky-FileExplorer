@@ -37,10 +37,11 @@ and 80% interface scale.
 | Message or symptom | Next step |
 | --- | --- |
 | Another operation is already running | Reopen FileExplorer to view it. Wait, or use Cancel and wait for its final status. |
-| Destination already exists | Rename the source or choose a destination without that name. Copies do not merge or overwrite existing items. |
+| Name conflict / waiting for conflict choice | Open the task from Transfers / queue. Use Change name to keep both items, or Overwrite to choose replacement with/without backup. Resume checks that the conflict was removed; Start again uses a fresh folder. Folders are replaced whole, not merged. |
 | Progress remains at Preparing | Folder enumeration or a remote archive download may still be running. Check available local space and the network. |
 | Background service could not start | The systemd user session must be available. Collect the service diagnostics below. No files are transferred when startup fails. |
-| Background service stopped | A reboot, stopped session or worker failure may have interrupted it. Reconnect missing storage and use Options → Resume interrupted copy for a checkpointed copy. Extraction must be started again; nothing resumes automatically. |
+| Background service stopped | A reboot, stopped session or worker failure may have interrupted it. Reconnect missing storage and use Options → Interrupted copies for a checkpointed copy. Extraction must be started again; nothing resumes automatically. |
+| Partial-file cleanup could not finish | Reconnect the destination, then retry removal from Options → Interrupted copies. Unknown files or links are refused; inspect them yourself before removing anything. |
 | No notification | Notifications appear while the FileExplorer window is closed and need Steam and Decky running. Milestones already shown in the open window are not replayed. |
 | Archive cannot be opened or extracted | Check the size limit, format, available local space and whether it is encrypted, multipart or contains rejected entries. |
 | Cannot copy links or special files | Use another suitable tool for those items; this version copies regular files and folders. |
@@ -60,12 +61,29 @@ share name in its own field. If listing is blocked, a known share name can be
 entered manually. SMB1-only servers and mandatory SMB3 encryption are unsupported.
 
 If a password changed, forget the old connection in Settings and add it again.
+
+If Settings reports that password migration failed, the original saved profiles
+were retained. Restore systemd credential support and reload FileExplorer to retry.
+A newly added share can still connect for the current session when encrypted
+storage is unavailable; its password is not saved. Background SMB jobs need
+working encrypted storage even for session-only logins.
+
+An encrypted password that cannot be unlocked may belong to a different device,
+user, OS installation or TPM state. Restore the original environment, or forget
+that connection and reconnect with its SMB password. A system without TPM can
+save new credentials using its system key; that fallback cannot recover an old
+TPM-bound credential after a TPM reset.
 After a network interruption, reconnect and inspect the destination before
 repeating an operation. An incomplete copy may leave a hidden
 `.fileexplorer-*.partial` item; an interrupted editor save may report a backup.
 
 ## Text editor problems
 
+- **Power loss or unsaved work:** reopen the same file and choose Restore draft.
+  The latest acknowledged draft is retained separately from the original file.
+- **Recovery draft was not saved:** check free space and settings-directory access.
+  Keep the editor open and copy the text elsewhere if needed; unacknowledged edits
+  are not protected against a crash.
 - **Cannot decode:** choose the original encoding. Do not guess an encoding merely
   to make the error disappear; verify that the displayed characters are correct.
 - **Invalid JSON:** correct the reported line and column, then save again. The

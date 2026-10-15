@@ -14,7 +14,7 @@ shares already mounted by SteamOS. Either panel can point to a network location.
 
 | SteamOS PC | SteamOS handheld |
 | --- | --- |
-| [![Local SMB discovery on PC](../../images/screenshots/10-smb-discovery-be509db9bd73.png)](../../images/screenshots/10-smb-discovery-be509db9bd73.png) | [![Local SMB discovery on handheld](../../images/screenshots/handheld-11-discovery-b01bfbee30d1.png)](../../images/screenshots/handheld-11-discovery-b01bfbee30d1.png) |
+| [![Local SMB discovery on PC](../../images/screenshots/pc-smb-discovery-fdde134d19a1.png)](../../images/screenshots/pc-smb-discovery-fdde134d19a1.png) | [![Local SMB discovery on handheld](../../images/screenshots/handheld-smb-discovery-cbfd5767f025.png)](../../images/screenshots/handheld-smb-discovery-cbfd5767f025.png) |
 
 This screenshot shows seven real results from the test LAN. Names appear when
 the service advertises them; otherwise the list shows the local IP address.
@@ -36,10 +36,10 @@ No login details are sent by the discovery scan.
 
 | SteamOS PC | SteamOS handheld |
 | --- | --- |
-| [![SMB connection form on PC](../../images/screenshots/07-network-share-982884978b24.png)](../../images/screenshots/07-network-share-982884978b24.png) | [![SMB connection form on handheld](../../images/screenshots/handheld-10-network-ca7a10e063eb.png)](../../images/screenshots/handheld-10-network-ca7a10e063eb.png) |
+| [![SMB connection form on PC](../../images/screenshots/pc-network-share-a0720567c9c1.png)](../../images/screenshots/pc-network-share-a0720567c9c1.png) | [![SMB connection form on handheld](../../images/screenshots/handheld-network-share-07e1935a1a4f.png)](../../images/screenshots/handheld-network-share-07e1935a1a4f.png) |
 
-The form screenshot uses `nas.example` and `Games` as example values. For your
-connection, **Server / IP** takes a hostname or IPv4 address without `smb://`;
+The form is shown before entering connection details. For your connection,
+**Server / IP** takes a hostname or IPv4 address without `smb://`;
 **Share name** takes only the share name, not a complete path. Leave username and
 password blank only for a server that allows guest access.
 
@@ -54,8 +54,36 @@ sessions. Without it, the connection remains available only for the current
 plugin session; a running worker already has the details needed for its job.
 
 Use **Settings → Saved connections → Forget** to remove stored login details.
-FileExplorer stores its own connection profiles in a private settings file. It
-does not import passwords from KDE Wallet. Details about permissions and storage
+Passwords are encrypted for this device and Steam user by systemd, without a
+wallet unlock prompt. When available, systemd uses both TPM and its system key.
+Without TPM, the system key provides automatic encrypted storage. The private
+settings file contains connection details and ciphertext, rather than the password.
+
+Existing saved connections migrate automatically: FileExplorer encrypts each
+password and checks that it can decrypt it before replacing the old settings.
+Connection IDs, labels and remembered folders stay the same. If migration fails,
+the original file is retained and Settings shows a warning; reload the plugin
+after restoring credential support to retry. No plaintext backup is created.
+
+If secure storage is unavailable when adding a share, the connection remains
+available for that session and a warning says that the password was not saved.
+Background SMB jobs require encrypted credentials too; they refuse to start if
+the session password cannot be encrypted.
+
+An unfinished resumable copy retains an encrypted login snapshot in its private
+job directory, including when the connection itself was session-only. This
+allows recovery after a backend restart. Finishing or removing that copy deletes
+its snapshot; forgetting a saved connection removes its retained job snapshots.
+
+System-key fallback applies when **creating** a credential without TPM. It cannot
+recover an existing TPM-bound password after TPM reset/removal. Restore the
+original system/TPM, or forget the connection and add it again with the SMB password.
+Reinstalling the OS or losing its credential key can also require reconnecting.
+Copying `settings.json` alone to another device does not transfer usable passwords.
+
+Programs running as the same user can request decryption, so this is protection
+for stored files, not isolation from an already compromised Steam account.
+FileExplorer does not import passwords from KDE Wallet. Implementation details
 are in [How it works](How-It-Works.md#smb-connections-and-credentials).
 
 Direct connections use **SMB2 with NTLMv2 on TCP 445**. SMB1-only servers and
