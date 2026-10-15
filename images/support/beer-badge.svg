@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="124" height="20" viewBox="0 0 124 20" role="img" aria-label="Buy me a beer">
+  <rect width="124" height="20" rx="3" fill="#ffdd00"/>
+  <g transform="translate(5 2) scale(.4)">
+    <rect x="3" y="9" width="19" height="26" rx="3" fill="#f4ae20" stroke="#111" stroke-width="2"/>
+    <path d="M22 13h5a4 4 0 0 1 4 4v7a4 4 0 0 1-4 4h-5" fill="none" stroke="#111" stroke-width="3"/>
+    <path d="M8 16v12m8-12v12" stroke="#fff4cb" stroke-width="3" stroke-linecap="round"/>
+    <path d="M3 12C-2 12-1 4 4 4-1 13-1 14 4c6-3 11 3 7 8Z" fill="#fff" stroke="#111" stroke-width="2"/>
+  </g>
+  <text x="71" y="14" text-anchor="middle" font-family="Verdana,Arial,sans-serif" font-size="11" fill="#111">Buy me a beer</text>
+</svg>

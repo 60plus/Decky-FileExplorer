@@ -4,6 +4,7 @@
 [![Latest release downloads](https://img.shields.io/github/downloads/60plus/Decky-FileExplorer/latest/total?label=downloads%40latest)](https://github.com/60plus/Decky-FileExplorer/releases/latest)
 [![Stars](https://img.shields.io/github/stars/60plus/Decky-FileExplorer?style=flat&logo=github)](https://github.com/60plus/Decky-FileExplorer/stargazers)
 [![License: MIT](https://img.shields.io/github/license/60plus/Decky-FileExplorer)](LICENSE)
+[![Buy me a beer](images/support/beer-badge.svg)](https://buymeacoffee.com/60plus)
 
 ![FileExplorer: Two panels. One controller.](images/cover.png)
 
@@ -14,8 +15,6 @@ Open two folders side by side, select your files and copy or move them across.
 [Handheld guide](docs/wiki/Handheld-Guide.md) ·
 [How it works](https://github.com/60plus/Decky-FileExplorer/wiki/How-It-Works) ·
 [Troubleshooting](https://github.com/60plus/Decky-FileExplorer/wiki/Troubleshooting)
-
-[![Buy me a beer](images/support/buy-me-a-beer.svg)](https://buymeacoffee.com/60plus)
 
 ## What it does
 
