@@ -25,6 +25,9 @@ function wrapMenu(event: Event, button: number) {
     ? target.closest<HTMLElement>('.fe-menu-items,.fe-dialog,.fe-settings') || target.closest<HTMLElement>('.fe-panel-stack')
     : target.closest<HTMLElement>('.fe-menu-columns,.fe-actions,.fe-toolbar,.fe-status,.fe-transfer-grid,.fe-stack,.fe-dialog,.fe-panel-stack');
   if (!scope || target.closest('.fe-editor-code,.fe-list,.fe-app .fe-status,.fe-app .fe-transfer-grid')) return;
+  // Decky's header sits outside our sidebar content. Keep vertical navigation
+  // native here so Up can reach its back arrow instead of wrapping to the bottom.
+  if (vertical && scope.matches('.fe-settings,.fe-panel-stack') && scope.closest('.fe-sidebar')) return;
   const candidates = Array.from(scope.querySelectorAll<HTMLElement>('button,[role="button"],[role="checkbox"],[role="switch"],input,textarea,select')).filter(available);
   const controls = candidates.filter(element => !candidates.some(parent => parent !== element && parent.contains(element)));
   const current = controls.find(element => element === target || element.contains(target)) ||

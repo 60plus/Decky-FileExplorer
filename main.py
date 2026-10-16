@@ -19,7 +19,12 @@ class Plugin:
         await asyncio.to_thread(self.jobs.ensure_dispatcher)
 
     async def _unload(self):
-        if hasattr(self, 'service'): await asyncio.to_thread(self.service.shutdown)
+        # Decky closes its RPC socket during unload. On current loaders the EOF
+        # reader can starve this loop, so yielding here prevents unload returning
+        # even after the cleanup thread has finished. This coroutine must finish
+        # without yielding. Close local resources synchronously; long-running
+        # transfers belong to detached workers.
+        if hasattr(self, 'service'): self.service.shutdown()
 
     async def _migration(self):
         pass

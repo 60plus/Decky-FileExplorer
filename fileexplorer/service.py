@@ -703,4 +703,8 @@ def error_message(error):
     if error.__class__.__module__.startswith(('smb', 'nmb')):
         return 'SMB operation failed. Check the connection, permissions and credentials.'
     if isinstance(error, PermissionError): return 'Permission denied. FileExplorer runs as your Steam user.'
+    # Socket failures can escape pysmb as built-in exceptions. Keep this neutral:
+    # RPC and worker callers also handle non-SMB operations, not all resumable.
+    if isinstance(error, (ConnectionError, TimeoutError)):
+        return 'Connection unavailable or interrupted. Check the network and server, then try again.'
     return str(error)[:500] or type(error).__name__

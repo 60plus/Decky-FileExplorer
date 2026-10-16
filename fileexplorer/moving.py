@@ -75,7 +75,13 @@ def move(fs, source, destination, copy_item, progress, replacement=None):
     if replacement:
         staging = join(destination, '.fileexplorer-' + uuid.uuid4().hex + '.move')
         fs.mkdir(staging)
-    target = copy_item(fs, source, staging or destination)
+    try:
+        target = copy_item(fs, source, staging or destination)
+    except BaseException:
+        if staging:
+            try: fs.remove_one(staging, True)
+            except Exception: pass  # Keep any remaining contents and the original copy error.
+        raise
     verified = []
     # Check all data before deleting even the first source file.
     for path, relative, before in records:

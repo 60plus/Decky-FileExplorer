@@ -6,7 +6,7 @@ import time
 import unittest
 from unittest.mock import patch
 
-from fileexplorer import archive, moving, packing
+from fileexplorer import archive, moving, packing, conflicts
 from fileexplorer.service import Service, Cancelled
 from fileexplorer.vfs import VFS
 
@@ -73,6 +73,34 @@ class MovePackTests(unittest.TestCase):
         with self.force_cross(source), self.assertRaisesRegex(ValueError, 'verification'):
             moving.move(self.fs, str(source), str(self.right), corrupted, lambda *_: None)
         self.assertTrue((source/'.hidden').exists()); self.assertTrue((source/'script.sh').exists())
+
+    def test_failed_cross_move_removes_only_empty_staging(self):
+        source = self.left/'source.txt'; source.write_bytes(b'original')
+        replacement = conflicts.Replacement(self.root, lambda _: 'overwrite', lambda *_: None)
+        for leave_contents in (False, True):
+            def failed_copy(fs, src, dest):
+                if leave_contents: (Path(dest)/'retained.partial').write_bytes(b'partial')
+                raise OSError(errno.ENOSPC, 'No space left on device')
+            with self.force_cross(source), self.assertRaises(OSError) as error:
+                moving.move(self.fs, str(source), str(self.right), failed_copy, lambda *_: None, replacement)
+            self.assertEqual(error.exception.errno, errno.ENOSPC)
+            self.assertEqual(source.read_bytes(), b'original')
+            self.assertFalse((self.right/source.name).exists())
+            stages=list(self.right.glob('.fileexplorer-*.move'))
+            self.assertEqual(len(stages), int(leave_contents))
+            if leave_contents: self.assertEqual((stages[0]/'retained.partial').read_bytes(), b'partial')
+
+    def test_cross_move_retains_staging_after_verification_failure(self):
+        source=self.left/'source.txt';source.write_bytes(b'original')
+        replacement=conflicts.Replacement(self.root,lambda _: 'overwrite',lambda *_: None)
+        def corrupted(fs,src,dest):
+            target=self.copy(fs,src,dest);Path(target).write_bytes(b'corrupt!');return target
+        with self.force_cross(source), self.assertRaisesRegex(ValueError,'verification'):
+            moving.move(self.fs,str(source),str(self.right),corrupted,lambda *_:None,replacement)
+        self.assertEqual(source.read_bytes(),b'original')
+        stages=list(self.right.glob('.fileexplorer-*.move'))
+        self.assertEqual(len(stages),1)
+        self.assertEqual((stages[0]/source.name).read_bytes(),b'corrupt!')
 
     def test_cross_move_keeps_new_source_files(self):
         source = self.sample()

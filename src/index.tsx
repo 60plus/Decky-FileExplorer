@@ -156,7 +156,7 @@ function Content() {
     return () => owner.clearTimeout(timer);
   }, [page, homeFocus]);
   const back = () => navigateSidebar('home', false, page);
-  return <Focusable noFocusRing onCancelActionDescription={page === 'home' ? undefined : 'Back'}
+  return <Focusable className="fe-sidebar" noFocusRing onCancelActionDescription={page === 'home' ? undefined : 'Back'}
     onCancelButton={page === 'home' ? undefined : e => { e.preventDefault(); e.stopPropagation(); back(); }}>
     <style>{css}</style><span hidden ref={marker} />{page === 'support' ? <SupportPanel back={back} /> : page === 'update' ? <UpdatePanel back={back} /> : page === 'settings' ? <SettingsPanel back={back} focusExtraction={focusExtraction} /> : page === 'about' ? <AboutPanel back={back} /> :
     <PanelSection><div ref={home} className="fe-panel-stack">
