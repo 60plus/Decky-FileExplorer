@@ -1,0 +1,14 @@
+{
+  "source_commit": "6f2b4fe0e66480d774b74b5ef09bcdfb1cd703a0",
+  "version": "0.8.0",
+  "sha256": "27474aaf2ae820ec8488963a7422efea8dd5a30e72b0b90537e8ea4df4acc185",
+  "size": 2238385,
+  "runtime_files": 177,
+  "updater_retained": true,
+  "python_tests": 179,
+  "python_skipped": 0,
+  "updater_tests": 16,
+  "javascript_tests": 8,
+  "typecheck": true,
+  "build": true
+}

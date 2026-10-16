@@ -1,0 +1,39 @@
+{
+  "status": "passed",
+  "checks": [
+    {
+      "page": "home",
+      "up_reaches_header": true,
+      "A_returns_to_plugin_list": true,
+      "B_one_level": true
+    },
+    {
+      "page": "Settings",
+      "up_reaches_header": true,
+      "A_returns_to_plugin_list": true,
+      "B_one_level": true
+    },
+    {
+      "page": "Update",
+      "up_reaches_header": true,
+      "A_returns_to_plugin_list": true,
+      "B_one_level": true
+    },
+    {
+      "page": "Support",
+      "up_reaches_header": true,
+      "A_returns_to_plugin_list": true,
+      "B_one_level": true
+    },
+    {
+      "page": "About",
+      "up_reaches_header": true,
+      "A_returns_to_plugin_list": true,
+      "B_one_level": true
+    }
+  ],
+  "home_B_returns_to_plugin_list": true,
+  "sha256": "27474aaf2ae820ec8488963a7422efea8dd5a30e72b0b90537e8ea4df4acc185",
+  "files": 177,
+  "installed_byte_identical": true
+}

@@ -1,0 +1,9 @@
+{
+  "status": "passed",
+  "installed": "0.8.0",
+  "latest": "0.8.0",
+  "candidate": null,
+  "message": "You have the latest version.",
+  "disabled_startup_returns_none": true,
+  "native_update_panel": true
+}

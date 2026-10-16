@@ -1,0 +1,8 @@
+{
+  "status": "passed",
+  "graceful_unload_log": [
+    "Oct 16 14:04:11 steamdeck PluginLoader[4444]: Unloaded FileExplorer (v0.8.0)",
+    "Oct 16 14:04:11 steamdeck PluginLoader[1671]: [plugin][INFO]: Plugin FileExplorer (v0.8.0) has been stopped in 0.5s"
+  ],
+  "old_media_token_revoked": true
+}

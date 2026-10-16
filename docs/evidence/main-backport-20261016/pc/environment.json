@@ -1,0 +1,5 @@
+{
+  "os_release": "NAME=\"SteamOS\"\nPRETTY_NAME=\"SteamOS\"\nVERSION_CODENAME=holo\nID=steamos\nID_LIKE=arch\nANSI_COLOR=\"1;35\"\nHOME_URL=\"https://www.steampowered.com/\"\nDOCUMENTATION_URL=\"https://support.steampowered.com/\"\nSUPPORT_URL=\"https://support.steampowered.com/\"\nBUG_REPORT_URL=\"https://support.steampowered.com/\"\nLOGO=steamos\nVARIANT_ID=steamdeck\nVERSION_ID=3.8.28\nBUILD_ID=20260922.1\nSTEAMOS_DEFAULT_UPDATE_BRANCH=stable\n",
+  "captured_at": "2026-10-16T14:04:14-07:00",
+  "decky": "v3.2.10"
+}
