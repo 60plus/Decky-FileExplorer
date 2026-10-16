@@ -1,0 +1,21 @@
+{
+  "status": "passed",
+  "version": "0.8.1",
+  "sha256": "d8a7b3715bbc1a54b13bd7c4126020e1fdfe009ec4665729e092bc85756362f5",
+  "size": 2238384,
+  "files": 177,
+  "changed_payload_files": [
+    "FileExplorer/dist/index.js",
+    "FileExplorer/package.json"
+  ],
+  "unchanged_payload_files": 175,
+  "upgrade_from_080_verified": true,
+  "download_cache_exact": true,
+  "same_version_not_offered": true,
+  "network_used": false,
+  "source_commit": "c2a81e8897eaa61d9b758bc83961cc7669138a10",
+  "typecheck": true,
+  "build": true,
+  "updater_tests": 16,
+  "hardware_rerun": false
+}

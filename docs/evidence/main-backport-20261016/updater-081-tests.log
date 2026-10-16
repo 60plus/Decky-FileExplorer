@@ -1,0 +1,23 @@
+test_expansion_limit (test_updates.ReleaseTests.test_expansion_limit) ... ok
+test_no_release_is_not_up_to_date (test_updates.ReleaseTests.test_no_release_is_not_up_to_date) ... ok
+test_redirect_refuses_http_and_foreign_host (test_updates.ReleaseTests.test_redirect_refuses_http_and_foreign_host) ... ok
+test_reject_corrupt_or_mismatched_package (test_updates.ReleaseTests.test_reject_corrupt_or_mismatched_package) ... ok
+test_reject_foreign_assets_missing_checksum_and_digest_mismatch (test_updates.ReleaseTests.test_reject_foreign_assets_missing_checksum_and_digest_mismatch) ... ok
+test_reject_prerelease_draft_invalid_versions (test_updates.ReleaseTests.test_reject_prerelease_draft_invalid_versions) ... ok
+test_reject_traversal_duplicate_and_special_entries (test_updates.ReleaseTests.test_reject_traversal_duplicate_and_special_entries) ... /usr/local/lib/python3.12/zipfile/__init__.py:1650: UserWarning: Duplicate name: 'FileExplorer/main.py'
+  return self._open_to_write(zinfo, force_zip64=force_zip64)
+ok
+test_same_and_older_release_are_not_updates (test_updates.ReleaseTests.test_same_and_older_release_are_not_updates) ... ok
+test_select_newer_and_download_identity (test_updates.ReleaseTests.test_select_newer_and_download_identity) ... ok
+test_concurrent_instances_only_claim_one_notice (test_updates.StartupTests.test_concurrent_instances_only_claim_one_notice) ... ok
+test_disabled_skips_network_and_manual_check_still_works (test_updates.StartupTests.test_disabled_skips_network_and_manual_check_still_works) ... ok
+test_disabling_during_check_suppresses_notice (test_updates.StartupTests.test_disabling_during_check_suppresses_notice) ... ok
+test_download_rechecks_bytes_and_keeps_settings (test_updates.StartupTests.test_download_rechecks_bytes_and_keeps_settings) ... ok
+test_notice_only_once_across_backend_reloads_then_next_boot (test_updates.StartupTests.test_notice_only_once_across_backend_reloads_then_next_boot) ... ok
+test_offline_retries_after_backoff_across_reload (test_updates.StartupTests.test_offline_retries_after_backoff_across_reload) ... ok
+test_up_to_date_is_only_checked_once (test_updates.StartupTests.test_up_to_date_is_only_checked_once) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.099s
+
+OK
