@@ -47,7 +47,7 @@ See the [handheld guide](Handheld-Guide.md) for the settings and examples.
 
 ## Background job lifecycle
 
-1. The backend validates the operation. Copy submissions persist one task per selected top-level item, the batch concurrency limit and any queue dependency. A cross-process lock enforces the global limit of five active copies.
+1. The backend validates the operation. Transfer submissions persist their tasks, batch concurrency limit and queue dependencies. Packing a selection creates one archive task. A cross-process lock enforces the global limit of five active background operations.
 2. It creates a private job directory and copies the worker code and Python
    dependencies there (one shared snapshot per batch). The worker therefore does not depend on files being
    replaced in the installed plugin directory during an update.
@@ -59,10 +59,14 @@ See the [handheld guide](Handheld-Guide.md) for the settings and examples.
    failure or cancellation. The open window polls the status every 500 ms.
 
 A detached `fileexplorer-queue-<id>` service fills free slots and respects each
-batch's 1-5 copy limit. Adding to the queue records a dependency on all earlier
+batch's 1-5 task limit. Adding to the queue records a dependency on all earlier
 pending tasks; parallel submissions can use slots alongside them. Dispatcher
 instances serialize through a file lock, so backend reloads do not duplicate
-launches. Non-copy operations remain exclusive. Queue requests survive closing
+launches. Read/write path reservations prevent conflicting jobs from running
+together. Earlier queued and paused tasks retain their reservations. Rename and
+folder creation hold a short-lived path lease while filesystem work happens
+outside the queue lock, so slow SMB calls do not stop unrelated transfers.
+Queue requests survive closing
 the window and include encrypted credentials rather than plaintext passwords.
 
 The manager stores the current job ID, state and notification acknowledgements

@@ -28,9 +28,13 @@ a local folder. The mount must be available whenever the application starts.
 | --- | --- |
 | [![Add a non-Steam shortcut on PC](../../images/screenshots/pc-add-steam-ac50c28e3484.png)](../../images/screenshots/pc-add-steam-ac50c28e3484.png) | [![Add a non-Steam shortcut on handheld](../../images/screenshots/handheld-add-steam-9869350e498b.png)](../../images/screenshots/handheld-add-steam-9869350e498b.png) |
 
-## Open the current game's folder
+## Open a game's folder
 
-Open Steam's menu while a game is running. In the game's column, choose
+Select an installed game in the Steam library and press **Menu / Start**.
+Choose **Open in FileExplorer** to open that game's folder. The action is also
+available from the game's gear menu and supports non-Steam shortcuts.
+
+While a game is running, open Steam's menu. In the game's column, choose
 **Open in FileExplorer**, below **View game details**.
 
 FileExplorer opens the game's folder in the left panel. The right panel keeps

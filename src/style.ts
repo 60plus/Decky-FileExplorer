@@ -217,7 +217,7 @@ html[data-fe-legend] #Footer { height:auto!important; }
 .fe-destructive.DialogButton { background:#842b38!important; color:#fff1f2!important; border:1px solid #ef6e7f!important; }
 .fe-destructive.DialogButton.gpfocus,.fe-destructive.DialogButton:hover { background:#b13246!important; color:white!important; }
 .fe-transfer-conflict { outline:1px solid #e8b965; }
-.fe-options-modal { width:min(820px,calc(100vw - 48px))!important; max-width:calc(100vw - 48px)!important; min-width:0!important; height:min(500px,calc(100vh - 116px))!important; max-height:calc(100vh - 116px)!important; padding:20px!important; box-sizing:border-box; overflow:hidden!important; }
+.fe-options-modal { width:min(820px,calc(100vw - 48px))!important; max-width:calc(100vw - 48px)!important; min-width:0!important; height:min(544px,calc(100vh - 80px))!important; max-height:calc(100vh - 80px)!important; padding:20px!important; box-sizing:border-box; overflow:hidden!important; }
 .fe-options-modal .DialogContent_InnerWidth { width:100%!important; max-width:none!important; }
 .fe-options-modal .DialogContent_InnerWidth,.fe-options-modal form { height:100%!important; min-height:0!important; }
 .fe-menu-dialog { width:100%; min-width:0; max-width:none; height:100%; display:flex; flex-direction:column; }
@@ -226,7 +226,7 @@ html[data-fe-legend] #Footer { height:auto!important; }
 .fe-menu-section h3 { margin:0 0 10px; font-size:14px; color:#8ecedc; text-align:center; }
 .fe-menu-items { display:flex; flex-direction:column; gap:8px; flex:1; min-height:0; overflow:auto; padding:4px; }
 .fe-menu-items .DialogButton { flex-shrink:0; width:100%; min-width:0!important; white-space:normal; line-height:1.25!important; padding:8px 12px!important; min-height:36px!important; font-size:14px!important; box-sizing:border-box; }
-@media(max-height:700px) { .fe-options-modal { padding:16px!important; } .fe-menu-columns { gap:10px; } .fe-menu-section { padding:6px; } .fe-menu-items { gap:6px; } .fe-menu-items .DialogButton { min-height:28px!important; padding:4px 10px!important; } .fe-menu-dialog h2 { font-size:18px; margin-bottom:8px; } .fe-menu-section h3 { margin-bottom:6px; font-size:12px; } .fe-destination { padding:7px 10px; margin:4px 0 8px; } }
+@media(max-height:700px) { :has(> .fe-options-modal) { padding:6px 24px!important; } .fe-options-modal { padding:16px!important; } .fe-menu-columns { gap:10px; } .fe-menu-section { padding:6px; } .fe-menu-items { gap:6px; } .fe-menu-items .DialogButton { min-height:28px!important; padding:4px 10px!important; } .fe-menu-dialog h2 { font-size:18px; margin-bottom:8px; } .fe-menu-section h3 { margin-bottom:6px; font-size:12px; } .fe-destination { padding:7px 10px; margin:4px 0 8px; } }
 .fe-pack-dialog .fe-pack-fields,.fe-shortcut-dialog .fe-pack-fields { max-height:48vh; overflow:auto; }
 .fe-archive-output { color:#79dde3; overflow-wrap:anywhere; font-size:13px; padding:6px 0; }
 @media (max-height:700px) {

@@ -361,6 +361,54 @@ class BackendTests(unittest.TestCase):
         self.assertTrue((root / 'files/new').exists())
         self.assertTrue((root / 'info/new.trashinfo').exists())
 
+    def _refuse_lstat(self, refused):
+        """Make one candidate answer lstat the way /efi and /esp do on the device."""
+        original = Path.lstat
+        def refuse(path, *args, **kwargs):
+            if path == refused: raise PermissionError(13, 'Permission denied')
+            return original(path, *args, **kwargs)
+        return patch.object(Path, 'lstat', refuse)
+
+    @unittest.skipUnless(os.name == 'posix', 'Linux fd-based deletion')
+    def test_trash_roots_skip_optional_candidates_that_cannot_be_inspected(self):
+        uid = str(os.getuid())
+        disk, empty_mount, firmware = self.root / 'disk', self.root / 'nothing', self.root / 'efi'
+        (disk / ('.Trash-' + uid)).mkdir(parents=True)
+        empty_mount.mkdir()
+        (firmware / ('.Trash-' + uid)).mkdir(parents=True)
+        with patch.dict(os.environ, {'XDG_DATA_HOME': str(self.home / '.local/share')}), \
+             self._refuse_lstat(firmware / ('.Trash-' + uid)):
+            found = trash.roots(self.home, mounts=[disk, empty_mount, firmware])
+        self.assertEqual(found, [self.home / '.local/share/Trash', disk / ('.Trash-' + uid)])
+
+    @unittest.skipUnless(os.name == 'posix', 'Linux fd-based deletion')
+    def test_empty_trash_ignores_an_optional_trash_it_cannot_inspect(self):
+        root = self.home / '.local/share/Trash'
+        (root / 'files').mkdir(parents=True); (root / 'info').mkdir()
+        (root / 'files/old').write_text('old'); (root / 'info/old.trashinfo').write_text('metadata')
+        firmware = self.root / 'efi'
+        (firmware / ('.Trash-' + str(os.getuid()))).mkdir(parents=True)
+        with patch.dict(os.environ, {'XDG_DATA_HOME': str(self.home / '.local/share')}), \
+             self._refuse_lstat(firmware / ('.Trash-' + str(os.getuid()))):
+            self.assertEqual(trash.empty(self.home, lambda *_: None, mounts=[firmware]), 1)
+        self.assertEqual(list((root / 'files').iterdir()), [])
+        self.assertEqual(list((root / 'info').iterdir()), [])
+
+    @unittest.skipUnless(os.name == 'posix', 'Linux fd-based deletion')
+    def test_empty_trash_still_reports_a_refused_deletion(self):
+        root = self.home / '.local/share/Trash'
+        (root / 'files').mkdir(parents=True); (root / 'info').mkdir()
+        (root / 'files/kept').write_text('kept'); (root / 'info/kept.trashinfo').write_text('metadata')
+        original = os.unlink
+        def refuse(name, dir_fd=None):
+            if name == 'kept': raise PermissionError(13, 'Permission denied')
+            return original(name, dir_fd=dir_fd)
+        with patch.dict(os.environ, {'XDG_DATA_HOME': str(self.home / '.local/share')}), \
+             patch('fileexplorer.trash.os.unlink', side_effect=refuse):
+            with self.assertRaises(PermissionError):
+                trash.empty(self.home, lambda *_: None, mounts=[])
+        self.assertTrue((root / 'files/kept').exists())
+
     def test_discovery_is_bounded_to_local_private_routes(self):
         hosts, nets, limited = discovery.candidates([
             dict(dst='192.168.1.0/24', dev='wlan0', prefsrc='192.168.1.2'),

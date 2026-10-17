@@ -19,6 +19,30 @@ def mounted_paths():
     return result
 
 
+def reservation_roots(home, mounts=None):
+    """Include trash locations that a concurrent move to Trash may create."""
+    uid = str(os.getuid())
+    data = os.environ.get('XDG_DATA_HOME', '')
+    fallback = Path(home) / '.local/share/Trash'
+    result = [fallback, Path(data) / 'Trash' if data and os.path.isabs(data) else fallback]
+    for mount in mounted_paths() if mounts is None else mounts:
+        result.extend((Path(mount) / ('.Trash-' + uid), Path(mount) / '.Trash' / uid))
+    return list(dict.fromkeys(result))
+
+
+def _inspectable(candidate):
+    """Whether an optional per-mount trash is worth opening at all.
+
+    Mounts such as /efi and /esp answer even lstat with a permission error, so
+    their .Trash-<uid> candidates must drop out during discovery. This is not
+    error handling: a trash folder that exists and then refuses deletion, or
+    belongs to another user, or turns out to be a symlink, still reports that.
+    """
+    try: candidate.lstat()
+    except (FileNotFoundError, PermissionError): return False
+    return True
+
+
 def roots(home, mounts=None):
     uid = os.getuid()
     data = os.environ.get('XDG_DATA_HOME', '')
@@ -29,12 +53,14 @@ def roots(home, mounts=None):
         try:
             if not mount.is_dir() or not os.access(mount, os.R_OK | os.X_OK): continue
         except PermissionError: continue
-        result.append(mount / ('.Trash-' + str(uid)))
+        candidate = mount / ('.Trash-' + str(uid))
+        if _inspectable(candidate): result.append(candidate)
         shared = mount / '.Trash'
         try:
             info = shared.lstat()
             if stat.S_ISDIR(info.st_mode) and info.st_mode & stat.S_ISVTX:
-                result.append(shared / str(uid))
+                candidate = shared / str(uid)
+                if _inspectable(candidate): result.append(candidate)
         except FileNotFoundError: pass
         except PermissionError: pass  # Inaccessible mounts cannot contain accessible trash.
     return list(dict.fromkeys(result))

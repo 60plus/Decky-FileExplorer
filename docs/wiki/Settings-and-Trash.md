@@ -108,7 +108,10 @@ drives. FileExplorer and the desktop use the same Trash; this is not a separate
 plugin-only bin. Confirming permanently deletes the trashed items. Choose
 **Cancel** to leave them there.
 
-Emptying is unavailable while another background operation is running.
+Emptying is available during unrelated transfers. If an earlier operation is
+using Trash, emptying waits until that operation finishes. Inaccessible system
+partitions are skipped when locating Trash; errors deleting items from an
+accessible Trash are still reported.
 
 ## Controller legend
 

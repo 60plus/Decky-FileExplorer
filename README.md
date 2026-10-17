@@ -24,13 +24,13 @@ Open two folders side by side, select your files and copy or move them across.
 - **Optional startup image.** A centered splash appears for three seconds on the first launch. Further displays are off by default and can be enabled in Settings.
 - **First setup with Handheld and Steam PC profiles.** Choose a layout, use X for setting explanations, adjust and save. Everything stays editable later. See [first setup](docs/wiki/First-Setup.md).
 - **Copy files and folders** between local disks and SMB shares, with percentage and transfer speed. On cancellation, keep unfinished copies for later or remove them. **Options → Interrupted copies** retains recovery tasks across restarts and subsequent operations.
-- **Queue transfers or run up to 5 copies together.** Multiple selections can run one at a time or with a chosen parallel limit. Each active copy has its own progress; browsing, text editing and media playback remain available.
+- **Queue transfers or run up to 5 background operations together.** Copy, move, pack and extract can run alongside each other when their files do not conflict. Each active task has its own progress; browsing, text editing and media playback remain available.
 - **Copy or move with a choice at name conflicts:** change the incoming name, keep the old item as a numbered `.bak`, or overwrite with a red confirmation button. The interruption window has six consistent actions. Moves between filesystems verify the copied data before removing the source.
 - **Two-column Options menu:** file actions on the left, current-folder and FileExplorer actions on the right, with four-direction controller navigation.
 - **Background jobs through systemd** keep copying, moving, packing or extracting after closing FileExplorer. Plugin notifications report 25%, 50%, 75% and completion while the window is closed.
 - **Open ZIP, RAR, 7z and TAR archives like folders**, select their contents and extract them to the other panel, using SteamOS's libarchive.
 - **Create ZIP, 7z, TAR, TAR.GZ, TAR.BZ2 and TAR.XZ archives** with a name, compression level and destination panel of your choice.
-- **Add applications and scripts to Steam** from Options or the mouse context menu. Open a running game's folder using **Open in FileExplorer** in Steam's game menu. See [Steam integration](docs/wiki/Steam-Integration.md).
+- **Add applications and scripts to Steam** from Options or the mouse context menu. Use **Open in FileExplorer** from a selected game's library menu or a running game's Steam menu. See [Steam integration](docs/wiki/Steam-Integration.md).
 - **Discover SMB servers and list their shares** from the connection dialog.
 - **Browse SMB2 shares**, including guest access and username/password/domain authentication.
 - **Remember SMB connections** when requested. Previously connected shares can be reopened without entering the password again.

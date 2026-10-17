@@ -16,6 +16,16 @@ def is_location(value):
     return isinstance(value, str) and value.startswith('archive://')
 
 
+def extraction_name(source):
+    from .vfs import split
+    name = Path(split(source)[1]).name
+    for extension in ('.tar.gz', '.tar.bz2', '.tar.xz', '.tgz', '.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz'):
+        if name.lower().endswith(extension):
+            name = name[:-len(extension)]
+            break
+    return name or 'Extracted'
+
+
 def location(source, member=''):
     from .vfs import split
     split(source)

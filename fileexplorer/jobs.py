@@ -12,7 +12,7 @@ import time
 import uuid
 from pathlib import Path
 
-from . import archive, packing, credentials
+from . import archive, packing, credentials, transfer_paths
 from .environment import systemd_environment
 from .durable import sync_directory
 
@@ -143,6 +143,32 @@ class Jobs:
                 name = validate_name(name)
                 if join(parent(conflict['target']), name) == conflict['target']:
                     raise ValueError('Choose a different name for the incoming item.')
+            if choice in ('backup', 'overwrite', 'rename'):
+                from .vfs import VFS, join, parent
+                from .moving import identity
+                profiles = self.service.profiles()
+                connections = folder / 'connections.json'
+                if connections.exists(): profiles = {**json.loads(connections.read_text()), **profiles}
+                fs = VFS(profiles)
+                try:
+                    targets = [join(parent(conflict['target']), name)] if choice == 'rename' else [conflict['target']]
+                    if choice in ('backup', 'overwrite'): targets.append(conflict['backup'])
+                    reservations = []
+                    for target in targets:
+                        scope, path = identity(fs, target)
+                        reservations.append(dict(scope=scope, path=path.rstrip('/') or '/', write=True))
+                    if transfer_paths.overlaps(reservations, self._mutation_claims()):
+                        raise ValueError('This name is being changed. Wait for that operation to finish.')
+                    for other in self.all_states():
+                        if other['id'] != job_id and other['status'] == 'running':
+                            if transfer_paths.overlaps(reservations, self._resources(other)):
+                                raise ValueError('This name is used by another transfer. Choose another name or wait for that transfer to finish.')
+                    plan_path = folder / 'plan.json'
+                    plan = json.loads(plan_path.read_text())
+                    plan['resources'] = self._resources(state) + reservations
+                    atomic_json(plan_path, plan)
+                finally:
+                    fs.close()
             response = folder / 'conflict-response.json'
             if response.exists(): raise ValueError('A choice has already been submitted.')
             atomic_json(response, dict(id=conflict_id, choice=choice, name=name))
@@ -199,7 +225,70 @@ class Jobs:
                         atomic_json(path, value)
 
     def start_operation(self, action, sources, destination=None, options=None):
-        return self.start(action, sources, destination, options=options)
+        with self.locked():
+            if sum(s['status'] in ('running', 'queued', 'paused') for s in self.list_jobs()) >= 10000:
+                raise ValueError('The queue supports up to 10,000 pending items.')
+            state = self.start(action, sources, destination, options=options, _deferred=True)
+            self.pump()
+            self.ensure_dispatcher()
+            self._prune(None)
+            return self.state(state['id'])
+
+    def _mutation_claims(self):
+        """Read live file changes under manager.lock; discard crashed owners' leases."""
+        import fcntl
+        result = []
+        for path in self.root.glob('mutation-*.json'):
+            if not re.fullmatch(r'mutation-[a-f0-9]{32}\.json', path.name): continue
+            try: fd = os.open(path, os.O_RDWR | os.O_NOFOLLOW)
+            except FileNotFoundError: continue
+            with os.fdopen(fd, 'r+') as handle:
+                try: fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError: result.extend(json.load(handle))
+                else: path.unlink(missing_ok=True)
+        return result
+
+    def _check_mutation(self, action, paths):
+        claims = transfer_paths.resources(action, paths, None, None, self.service.profiles(), self.service.home)
+        if transfer_paths.overlaps(claims, self._mutation_claims()):
+            raise ValueError('This file or folder is already being changed. Wait for that operation to finish.')
+        for state in self.list_jobs():
+            if state['status'] not in ('running', 'queued', 'paused'): continue
+            try: busy = transfer_paths.overlaps(claims, self._resources(state))
+            except (OSError, ValueError, KeyError, TypeError): busy = True
+            if busy:
+                raise ValueError('This file or folder is used by a running or queued operation. Wait for it to finish, or cancel that operation first.')
+        return claims
+
+    @contextmanager
+    def _mutation(self, action, paths):
+        import fcntl
+        with self.locked():
+            claims = self._check_mutation(action, paths)
+            path = self.root / ('mutation-' + uuid.uuid4().hex + '.json')
+            handle = os.fdopen(os.open(path, os.O_RDWR | os.O_CREAT | os.O_EXCL, 0o600), 'w+')
+            try:
+                fcntl.flock(handle, fcntl.LOCK_EX)
+                json.dump(claims, handle); handle.flush()
+            except BaseException:
+                handle.close(); path.unlink(missing_ok=True)
+                raise
+        # Slow SMB calls hold only this path lease, never the queue manager lock.
+        try: yield
+        finally:
+            with self.locked():
+                try: path.unlink(missing_ok=True)
+                finally: handle.close()
+
+    def mkdir(self, location, name):
+        from .vfs import join
+        with self._mutation('mkdir', [join(location, name)]):
+            return self.service.mkdir(location, name)
+
+    def rename(self, location, name):
+        from .vfs import join, parent
+        with self._mutation('rename', [location, join(parent(location), name)]):
+            return self.service.rename(location, name)
 
     def start(self, action, sources, destination=None, retry_id=None, retry_mode=None, options=None,
               _deferred=False, _queue=None, _runtime_owner=None):
@@ -236,6 +325,9 @@ class Jobs:
             # detached worker. The durable job request never contains plaintext.
             if any(key not in profiles for key in used): raise ValueError('A login for this copy was forgotten or is unavailable. Reconnect its share and start a new copy.')
             profiles = credentials.protect_profiles({key: profiles[key] for key in used})
+            reservations = transfer_paths.resources(action, sources, destination, options, profiles, self.service.home)
+            if retry_folder and retry_mode in ('resume', 'discard') and plan.get('resources'):
+                reservations += plan['resources']
             job_id = uuid.uuid4().hex
             folder = self.root / job_id
             folder.mkdir(mode=0o700)
@@ -251,7 +343,7 @@ class Jobs:
             recoverable = action == 'copy' and not any(archive.is_location(p) for p in sources)
             request['recoverable'] = recoverable
             request['discard_only'] = retry_mode == 'discard'
-            atomic_json(folder / 'plan.json', dict(action=action, sources=sources, destination=destination))
+            atomic_json(folder / 'plan.json', dict(action=action, sources=sources, destination=destination, options=options, resources=reservations))
             if retry_folder and retry_mode in ('resume', 'discard') and (retry_folder / 'copy.jsonl').exists():
                 shutil.copyfile(retry_folder / 'copy.jsonl', folder / 'copy.jsonl')
                 os.chmod(folder / 'copy.jsonl', 0o600)
@@ -298,20 +390,26 @@ class Jobs:
             raise
 
     def submit_copy(self, sources, destination, mode='now', parallel_limit=1):
-        if mode not in ('now', 'parallel', 'queue'): raise ValueError('Choose parallel copying or the queue.')
-        if type(parallel_limit) is not int or not 1 <= parallel_limit <= 5: raise ValueError('Choose from 1 to 5 simultaneous copies.')
+        return self.submit_transfer('copy', sources, destination, mode, parallel_limit)
+
+    def submit_transfer(self, action, sources, destination, mode='now', parallel_limit=1, options=None):
+        if action not in transfer_paths.TRANSFERS: raise ValueError('This operation cannot run in the transfer queue.')
+        if mode not in ('now', 'parallel', 'queue'): raise ValueError('Choose parallel transfers or the queue.')
+        if type(parallel_limit) is not int or not 1 <= parallel_limit <= 5: raise ValueError('Choose from 1 to 5 simultaneous transfers.')
         with self.locked():
-            sources = self.service.validate_job('copy', sources, destination)
+            sources = self.service.validate_job(action, sources, destination)
+            options = packing.options(options) if action == 'pack' else None
+            batches = [sources] if action == 'pack' else [[source] for source in sources]
             existing = [s for s in self.list_jobs() if s['status'] in ('running', 'queued', 'paused')]
             if mode == 'now' and existing: raise ValueError('Another transfer started. Choose Parallel or Add to queue.')
-            if len(existing) + len(sources) > 10000: raise ValueError('The queue supports up to 10,000 pending items.')
+            if len(existing) + len(batches) > 10000: raise ValueError('The queue supports up to 10,000 pending items.')
             barrier = max((s.get('sequence', 0) for s in existing), default=0) if mode == 'queue' else 0
             batch = uuid.uuid4().hex
             created = []
             previous = self.current_dir()
             try:
-                for source in sources:
-                    state = self.start('copy', [source], destination, _deferred=True,
+                for batch_sources in batches:
+                    state = self.start(action, batch_sources, destination, options=options, _deferred=True,
                         _queue=dict(batch=batch, parallel_limit=parallel_limit, barrier=barrier),
                         _runtime_owner=created[0]['id'] if created else None)
                     created.append(state)
@@ -326,17 +424,54 @@ class Jobs:
             self._prune(None)
             return [self.state(s['id']) for s in created]
 
+    def _resources(self, state):
+        plan = json.loads((self._folder(state['id']) / 'plan.json').read_text())
+        if plan.get('resources') is not None: return plan['resources']
+        # Workers from a previous plugin version keep their original plan.
+        profiles = self.service.profiles()
+        connections = self._folder(state['id']) / 'connections.json'
+        if connections.exists(): profiles = {**json.loads(connections.read_text()), **profiles}
+        return transfer_paths.resources(plan['action'], plan['sources'], plan['destination'], plan.get('options'), profiles, self.service.home)
+
+    def _paths_busy(self, state, active, cache=None):
+        if not active: return False
+        if cache is None: cache = {}
+        def claims(item):
+            if item['id'] not in cache: cache[item['id']] = self._resources(item)
+            return cache[item['id']]
+        try:
+            own = claims(state)
+            return any(transfer_paths.overlaps(own, claims(other)) for other in active)
+        except (OSError, ValueError, KeyError, TypeError):
+            # Older jobs without enough metadata remain exclusive until finished.
+            return bool(active)
+
     def pump(self):
         """Start eligible queue entries while holding the global manager lock."""
         with self.locked():
             states = self.list_jobs()
             active = [s for s in states if s['status'] == 'running']
+            mutations = self._mutation_claims()
+            cache = {}
             for state in sorted((s for s in states if s['status'] == 'queued'), key=lambda s: s['sequence']):
                 if len(active) >= 5: break
-                if any(s.get('action') != 'copy' for s in active): break
-                if state.get('action') != 'copy' and active: continue
+                # Unknown actions from another version stay exclusive.
+                if any(s.get('action') not in transfer_paths.OPERATIONS for s in active): break
+                if state.get('action') not in transfer_paths.OPERATIONS and active: continue
                 if sum(s.get('batch', s['id']) == state['batch'] for s in active) >= state['parallel_limit']: continue
                 if state['barrier'] and any(s['id'] != state['id'] and s['status'] in ('running', 'queued', 'paused') and s.get('sequence', 0) <= state['barrier'] for s in states): continue
+                earlier = [s for s in states if s['status'] in ('queued', 'paused') and s.get('sequence', 0) < state['sequence']]
+                try: changing = bool(mutations) and transfer_paths.overlaps(self._resources(state), mutations)
+                except (OSError, ValueError, KeyError, TypeError): changing = bool(mutations)
+                if changing or self._paths_busy(state, active + earlier, cache):
+                    paused = [s for s in earlier if s['status'] == 'paused']
+                    phase = ('Waiting for a file or folder change' if changing else
+                             'Waiting for paused files. Resume or cancel the earlier queue.' if self._paths_busy(state, paused, cache) else
+                             'Waiting for files used by another transfer')
+                    if state.get('phase') != phase:
+                        state.update(phase=phase, updated=time.time())
+                        atomic_json(self._folder(state['id']) / 'state.json', state)
+                    continue
                 try: self._launch(state)
                 except Exception: continue  # Retain a recoverable error for this task.
                 active.append(state)

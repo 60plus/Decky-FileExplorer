@@ -1,4 +1,4 @@
-import { beforePatch, findModuleExport } from '@decky/ui';
+import { beforePatch, findModuleExport, MenuItem } from '@decky/ui';
 import { cloneElement, isValidElement, ReactElement, ReactNode } from 'react';
 import { folderForApp } from './SteamIntegration';
 import { message } from './api';
@@ -56,13 +56,29 @@ export function installGameFolderButton(launch: (path: string) => void) {
     };
     return types[stage];
   }
+  // Steam's library menu accepts additional actions after its Play/Resume item.
+  // Use the selected overview, independently of whichever game is running.
+  const contextManager = findModuleExport(value => typeof value?.prototype?.CreateContextMenuInstance === 'function');
+  const appMenu = findModuleExport(value => typeof value === 'function' && String(value).includes('navigator:') && String(value).includes('instance:'));
+  const libraryPatch = contextManager && appMenu ? beforePatch(contextManager.prototype, 'CreateContextMenuInstance', args => {
+    if (!enabled) return;
+    args[0] = mapTree(args[0], node => {
+      const { overview, bInGamepadUI, includeMultiSelect, additionalActions } = node.props;
+      if (node.type !== appMenu || !bInGamepadUI || includeMultiSelect || !overview?.installed || !Number.isInteger(overview.appid) || overview.appid <= 0) return node;
+      const extras = Array.isArray(additionalActions) ? additionalActions : [additionalActions];
+      if (extras.some(item => isValidElement(item) && item.key === 'fileexplorer-library-folder')) return node;
+      return cloneElement(node, { additionalActions: [...extras,
+        <MenuItem key="fileexplorer-library-folder" onSelected={() => { void open(overview.appid); }}>Open in FileExplorer</MenuItem>] });
+    });
+  }) : undefined;
+  if (!libraryPatch) console.warn('[FileExplorer] Steam library menu integration is unavailable');
   const root = findModuleExport(value => typeof value?.render === 'function' && String(value.render).includes('navID:') && String(value.render).includes('excludeFromScrollRegionSearch:'));
-  if (!root) { console.warn('[FileExplorer] Steam main menu integration is unavailable'); return () => { enabled = false; }; }
-  const patch = beforePatch(root, 'render', args => {
+  if (!root) console.warn('[FileExplorer] Steam main menu integration is unavailable');
+  const patch = root ? beforePatch(root, 'render', args => {
     if (!enabled || args[0]?.navID !== 'MainNavMenuContainer') return;
     const props = args[0];
     args[0] = { ...props, children: mapTree(props.children, node => node.props.app && 'ownerWindow' in node.props && 'visible' in node.props && typeof node.type === 'function'
       ? { ...node, type: wrapped(node.type, 0) } : node) };
-  });
-  return () => { enabled = false; patch.unpatch(); };
+  }) : undefined;
+  return () => { enabled = false; patch?.unpatch(); libraryPatch?.unpatch(); };
 }

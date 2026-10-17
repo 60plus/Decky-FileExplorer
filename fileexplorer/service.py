@@ -433,7 +433,9 @@ class Service:
             if output: self.job['bytes'] += n
             self.job['work_bytes'] = self.job.get('work_bytes', 0) + n
             self.job['current'] = name
-            self.job['phase'] = {'copy': 'Copying', 'move': 'Moving / verifying', 'pack': 'Packing'}.get(self.job['action'], 'Extracting') if output else 'Preparing'
+            phases = {'copy': 'Copying', 'move': 'Moving / verifying', 'pack': 'Packing',
+                      'trash': 'Moving to Trash', 'delete': 'Deleting', 'empty_trash': 'Emptying Trash'}
+            self.job['phase'] = phases.get(self.job['action'], 'Extracting') if output else 'Preparing'
             now = time.monotonic()
             if n and (not self._speed_samples or now - self._speed_samples[-1][0] >= .1):
                 self._speed_samples.append((now, self.job['work_bytes']))
@@ -578,12 +580,8 @@ class Service:
 
     def _extract(self, fs, source, destination):
         if split(destination)[0]: raise ValueError('Extract into a local folder, then copy it to the share')
-        name = Path(split(source)[1]).name
-        for extension in ('.tar.gz', '.tar.bz2', '.tar.xz', '.tgz', '.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz'):
-            if name.lower().endswith(extension):
-                name = name[:-len(extension)]
-                break
-        target = join(destination, name or 'Extracted')
+        name = archive.extraction_name(source)
+        target = join(destination, name)
         if fs.exists(target): raise FileExistsError('Extraction folder already exists: ' + name)
         stage = tempfile.mkdtemp(prefix='.fileexplorer-extract-', dir=destination)
         try:

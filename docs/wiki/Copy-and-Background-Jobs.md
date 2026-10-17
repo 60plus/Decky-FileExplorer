@@ -13,7 +13,7 @@
 
 Local-to-local, local-to-SMB, SMB-to-local and SMB-to-SMB copies are supported.
 Each selected top-level file or folder becomes a separate task. Copying a folder
-includes all its contents. At most **5 copies** run across all batches combined;
+includes all its contents. At most **5 background operations** run across all batches combined;
 extra tasks wait for a slot. **Add to queue** places a new batch after the tasks
 already active or waiting. **Copy in parallel** lets it use a free slot alongside
 the existing batch. The selected per-batch limit is also respected.
@@ -25,9 +25,15 @@ is itself being copied can make copy verification fail; finish that transfer fir
 
 Use **Transfers** in the status area, or **Options → Transfers / queue**, to see
 active and waiting tasks. Select one to inspect its progress or cancel it. Removing
-a waiting task does not cancel another transfer. Moves, packing, whole-archive
-extraction and destructive operations remain exclusive; copies can be queued
-behind an operation of this kind.
+a waiting task does not cancel another transfer. Moves, packing and extraction
+can run beside copies or be added to the queue. Packing several selected items
+creates one archive task.
+
+Rename, New folder, Move to Trash and Empty Trash remain available during
+transfers. An operation that conflicts with files used by an earlier transfer
+waits for it; Rename and New folder report the conflict instead of changing
+those paths. Paused transfers also reserve their files until resumed or cancelled.
+Emptying Trash waits for operations that are adding files to Trash or using it.
 
 ## Queue controls on PC and handheld
 
@@ -81,7 +87,7 @@ copy file. It is replaced by the final filename when that item completes.
 ## Close the window and carry on
 
 Use **Close** to return to Steam. A separate systemd user service continues the
-copy, move, packing or extraction. A separate queue service starts waiting copies
+copy, move, packing or extraction. A separate queue service starts waiting tasks
 without needing the window or plugin backend to stay open. Reopening FileExplorer
 reconnects to the active and waiting tasks. Completed, cancelled and failed results stay in the bottom
 status area for six seconds; reopening does not replay an old result.

@@ -1,5 +1,28 @@
 # Testing and validation
 
+## Release 0.8.2
+
+The ZIP contains 183 runtime files and is 2,312,844 bytes. The GitHub updater is
+unchanged from 0.8.1.
+
+SHA-256:
+`467728523e4c6939334114b3c56cba416842d95258027da0918783c7cf8753d3`.
+
+- 204 Python tests passed on the SteamOS PC and handheld. All eight JavaScript
+  tests, TypeScript checking and the production build passed.
+- Five real background jobs ran together: copy, move, pack, whole-archive
+  extraction and selected extraction from an SMB RAR. Copied bytes matched the
+  source, and each progress milestone was recorded once.
+- Local and SMB rename and folder creation worked during a copy. Deletion and
+  Trash checks used isolated test files. Running, queued and paused transfer
+  paths remained protected from conflicting changes.
+- Steam UI checks covered operation dialogs during copying, slow SMB RAR
+  browsing across transfer completion, the taller options window and opening
+  the correct Steam/non-Steam game folders from library menus on both devices.
+  These checks used programmatic UI interaction, not physical controller input.
+- All installed runtime files matched the ZIP on both devices, and installation
+  preserved existing preferences.
+
 ## Release 0.8.1
 
 FileExplorer 0.8.1 retains the built-in GitHub updater. Its ZIP contains

@@ -6,14 +6,36 @@ import { css } from './style';
 import { showConflict } from './ConflictDialog';
 
 export const pendingJob = (job: Job) => ['running', 'queued', 'paused'].includes(job.status);
+export const parallelJob = (job: Job) => ['copy', 'move', 'pack', 'extract', 'trash', 'delete', 'empty_trash'].includes(job.action);
 
-export function CopyDialog({ count, destination, existing, submit, closeModal }: {
+export function useTransferJobs(initial: Job[]) {
+  const [jobs, setJobs] = useState(initial);
+  useEffect(() => {
+    let alive = true, pending = false;
+    const update = async () => {
+      if (pending) return;
+      pending = true;
+      try { const result = await api<Job[]>('jobs'); if (alive) setJobs(result); }
+      catch { /* Keep the last known queue; submission still validates it. */ }
+      finally { pending = false; }
+    };
+    void update();
+    const timer = window.setInterval(() => void update(), 750);
+    return () => { alive = false; window.clearInterval(timer); };
+  }, []);
+  return jobs;
+}
+
+export function CopyDialog({ count, destination, existing, action = 'copy', submit, closeModal }: {
   count: number; destination: string; existing: Job[];
+  action?: 'copy' | 'move' | 'extract';
   submit: (mode: string, parallel: number) => Promise<void>; closeModal?: () => void;
 }) {
   const [parallel, setParallel] = useState(false), [limit, setLimit] = useState(Math.min(2, count));
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
-  const occupied = existing.some(pendingJob), canParallel = !existing.some(j => pendingJob(j) && j.action !== 'copy');
+  const liveJobs = useTransferJobs(existing);
+  const occupied = liveJobs.some(pendingJob), canParallel = !liveJobs.some(j => pendingJob(j) && !parallelJob(j));
+  const verb = action === 'move' ? 'Move' : action === 'extract' ? 'Extract' : 'Copy';
   async function start(mode: string) {
     setBusy(true); setError('');
     try { await submit(mode, parallel ? limit : 1); closeModal?.(); }
@@ -21,24 +43,25 @@ export function CopyDialog({ count, destination, existing, submit, closeModal }:
   }
   return <ModalRoot className="fe-operation-modal" onCancel={busy ? undefined : closeModal} closeModal={busy ? undefined : closeModal}><style>{css}</style>
     <Focusable className="fe-dialog fe-pack-dialog fe-copy-dialog" flow-children="column">
-      <DialogHeading>Copy {count} item{count === 1 ? '' : 's'}?</DialogHeading>
+      <DialogHeading>{verb} {count} item{count === 1 ? '' : 's'}?</DialogHeading>
       <Focusable className="fe-stack fe-pack-fields" flow-children="column">
         <DestinationInfo path={destination} />
-        <p className="fe-description">If a name already exists, choose overwrite, backup or cancel.</p>
+        {action === 'move' && <p className="fe-description">Source items are removed only after a successful move. Transfers between disks or shares are verified first.</p>}
+        <p className="fe-description">{action === 'extract' ? 'Extract into the other panel. Whole archives create a new folder.' : 'If a name already exists, choose change name, overwrite, backup or cancel.'}</p>
         {count > 1 && <>
           <DropdownItem label="Selected items" selectedOption={parallel} disabled={busy} rgOptions={[{ data: false, label: 'One at a time' }, { data: true, label: 'In parallel' }]} onChange={o => setParallel(o.data)} />
-          {parallel && count > 2 && <SliderField label="Simultaneous copies" layout="below" min={2} max={Math.min(5, count)} step={1} value={limit} showValue disabled={busy} onChange={setLimit} />}
+          {parallel && count > 2 && <SliderField label="Simultaneous transfers" layout="below" min={2} max={Math.min(5, count)} step={1} value={limit} showValue disabled={busy} onChange={setLimit} />}
           <p className="fe-description">{parallel ? `Up to ${limit} selected items at once.` : 'Each selected file or folder waits for the previous one.'} Folders include all their contents.</p>
         </>}
-        {occupied && <p className="fe-description">Another transfer is active or waiting. Copy alongside it, or add this selection after the existing queue.</p>}
-        <p className="fe-description">At most 5 copies run at once. Extra items wait for a free slot. You can browse, edit text or play media while copying.</p>
+        {occupied && <p className="fe-description">Another transfer is active or waiting. Run alongside it, or add this selection after the existing queue.</p>}
+        <p className="fe-description">At most 5 transfers run at once. Items using the same files wait until those files are available. You can keep browsing, editing or playing media.</p>
       </Focusable>
       <ErrorText text={error} />
       <Focusable className="fe-stack fe-copy-actions" flow-children="column">
         {occupied ? <>
-          <DialogButton preferredFocus disabled={busy || !canParallel} onClick={() => void start('parallel')}>Copy in parallel</DialogButton>
+          <DialogButton preferredFocus disabled={busy || !canParallel} onClick={() => void start('parallel')}>{verb} in parallel</DialogButton>
           <DialogButton disabled={busy} onClick={() => void start('queue')}>Add to queue</DialogButton>
-        </> : <DialogButton preferredFocus disabled={busy} onClick={() => void start('now')}>Copy</DialogButton>}
+        </> : <DialogButton preferredFocus disabled={busy} onClick={() => void start('now')}>{verb}</DialogButton>}
         <DialogButton disabled={busy} onClick={closeModal}>Cancel</DialogButton>
       </Focusable>
     </Focusable>

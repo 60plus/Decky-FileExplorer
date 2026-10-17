@@ -1,4 +1,4 @@
-"""Detached queue dispatcher. Workers stay separate; at most five copies run."""
+"""Detached queue dispatcher. Workers stay separate; at most five transfers run."""
 import fcntl
 from pathlib import Path
 import sys

@@ -19,8 +19,8 @@ import { showConflict } from './ConflictDialog';
 import { focusControl } from './navigation';
 import { ModifiedDate } from './ModifiedDate';
 
-type Pane = { data: Listing | null; loading: boolean; error: string; selected: Set<string>; focused: string };
-const empty = (): Pane => ({ data: null, loading: true, error: '', selected: new Set(), focused: '' });
+type Pane = { data: Listing | null; loading: boolean; loadingPath: string; error: string; selected: Set<string>; focused: string };
+const empty = (): Pane => ({ data: null, loading: true, loadingPath: '', error: '', selected: new Set(), focused: '' });
 function consume(e: Event) { e.preventDefault(); e.stopPropagation(); }
 let shownLimitJob: string | undefined;
 let shownRecoveryJob: string | undefined;
@@ -51,18 +51,20 @@ export function Explorer({ closeModal, openSettings, initialPath }: { closeModal
   async function load(index: number, path: string, remember = true, preserve = false) {
     const generation = ++generations.current[index];
     const restoreFocus = !preserve && index === snapshot.current.active && region.current === 'files';
-    patch(index, { loading: true, error: '' });
+    // Refreshes keep the current list usable. Explicit navigation supersedes
+    // their response through the generation counter.
+    patch(index, { ...(preserve ? {} : { loading: true, loadingPath: path }), error: '' });
     try {
       const data = await api<Listing>('list', { location: path });
       if (!alive.current || generation !== generations.current[index]) return;
-      patch(index, p => ({ data, loading: false, selected: preserve ? new Set([...p.selected].filter(path => data.entries.some(e => e.path === path))) : new Set(), focused: preserve && data.entries.some(e => e.path === p.focused) ? p.focused : '..' }));
+      patch(index, p => ({ data, loading: false, loadingPath: '', selected: preserve ? new Set([...p.selected].filter(path => data.entries.some(e => e.path === path))) : new Set(), focused: preserve && data.entries.some(e => e.path === p.focused) ? p.focused : '..' }));
       if (restoreFocus && index === snapshot.current.active && region.current === 'files') focusPane(index);
       if (remember && snapshot.current.state?.settings.remember_paths) {
         void api('settings', { changes: { [index ? 'right' : 'left']: path } }).catch(() => {});
       }
-    } catch (e) { if (alive.current && generation === generations.current[index]) patch(index, { loading: false, error: message(e) }); }
+    } catch (e) { if (alive.current && generation === generations.current[index]) patch(index, { loading: false, loadingPath: '', error: message(e) }); }
   }
-  const refresh = () => snapshot.current.panes.forEach((p, i) => { if (p.data) void load(i, p.data.path, false, true); });
+  const refresh = () => snapshot.current.panes.forEach((p, i) => { if (p.data && !p.loading) void load(i, p.data.path, false, true); });
   function receiveJobs(result: Job[], initial = false) {
     const finished = result.filter(j => !pendingJob(j) && seenJobs.current.has(j.id) && pendingJob(seenJobs.current.get(j.id)!));
     seenJobs.current = new Map(result.map(j => [j.id, j]));
@@ -265,6 +267,11 @@ export function Explorer({ closeModal, openSettings, initialPath }: { closeModal
   }
   function back() {
     const p = panes[active];
+    if (p.loading && p.data) {
+      ++generations.current[active];
+      patch(active, { loading: false, loadingPath: '', error: '' });
+      return;
+    }
     if (p.data && p.data.path !== p.data.parent) void load(active, p.data.parent);
     else closeModal?.();
   }
@@ -275,17 +282,12 @@ export function Explorer({ closeModal, openSettings, initialPath }: { closeModal
   const copy = () => transfer('copy');
   function transfer(action: 'copy' | 'move', chosen = sources(), index = snapshot.current.active, completed?: () => void) {
     const dest = panes[1 - index].data?.path;
-    if (!chosen.length || !dest || (action === 'move' && running)) return;
+    if (!chosen.length || !dest) return;
     if (panes[1 - index].data?.archive) { setError('Choose a writable folder in the other panel. Archives are read-only.'); return; }
-    if (action === 'copy') {
-      openDialog(<CopyDialog count={chosen.length} destination={displayPath(dest)} existing={jobs} submit={async (mode, parallel) => {
-        const created = await api<Job[]>('submit_copy', { sources: chosen, destination: dest, mode, parallel_limit: parallel });
+      openDialog(<CopyDialog count={chosen.length} action={action === 'copy' && panes[index].data?.archive ? 'extract' : action} destination={displayPath(dest)} existing={jobs} submit={async (mode, parallel) => {
+        const created = await api<Job[]>('submit_transfer', { action, sources: chosen, destination: dest, mode, parallel_limit: parallel });
         created.forEach(trackJob); completed?.();
       }} />);
-      return;
-    }
-    const verb = action === 'move' ? 'Move' : panes[index].data?.archive ? 'Extract' : 'Copy';
-    openDialog(<ConfirmDialog title={`${verb} ${chosen.length} item${chosen.length > 1 ? 's' : ''}?`} destination={displayPath(dest)} description={'Source items are removed only after a successful move.\nTransfers between disks or shares are verified first.\n\nIf a name already exists, choose overwrite, backup or cancel.'} action={verb} submit={async () => { await start(action, chosen, dest); completed?.(); }} />);
   }
   async function locations(completed?: () => void) {
     setBusyAction(true);
@@ -319,21 +321,25 @@ export function Explorer({ closeModal, openSettings, initialPath }: { closeModal
     const finish = async (task: Promise<unknown>, closeMenu: () => void) => { await task; closeMenu(); };
     openDialog(<MenuDialog title={chosen.length > 1 ? `${chosen.length} items selected` : current?.name || 'Folder options'} sections={[{ title: 'Selected file / folder', actions: [
       { label: readOnly ? 'Extract selected to other panel' : 'Copy to other panel', keepOpen: true, run: closeMenu => transfer('copy', chosen, active, closeMenu), disabled: !chosen.length || targetReadOnly },
-      { label: 'Move to other panel', keepOpen: true, run: closeMenu => transfer('move', chosen, active, closeMenu), disabled: readOnly || !chosen.length || !dest || running || targetReadOnly },
-      { label: 'Create archive…', disabled: readOnly || !chosen.length || !folder || running, keepOpen: true, run: closeMenu => openDialog(<PackDialog count={chosen.length} initialName={chosen.length === 1 ? current?.name || 'Archive' : 'Archive'} folders={[{ data: folder!, label: 'Current panel' }, ...(!targetReadOnly && dest && dest !== folder ? [{ data: dest, label: 'Other panel' }] : [])]} submit={(destination, options) => finish(start('pack', chosen, destination, options), closeMenu)} />) },
-      { label: 'Extract whole archive…', disabled: readOnly || targetReadOnly || !current || !isArchive(current.name) || chosen.length !== 1 || !dest || running, keepOpen: true, run: closeMenu => openDialog(<ConfirmDialog title="Extract archive?" destination={displayPath(dest!)} description="Create a new folder in the other panel.\nZIP, RAR, 7z and TAR are supported." action="Extract" submit={() => finish(start('extract', chosen, dest), closeMenu)} />) },
-      { label: 'Rename', disabled: readOnly || chosen.length !== 1 || running, keepOpen: true, run: closeMenu => openDialog(<TextDialog title="Rename" initial={current?.name} submit={async name => { await api('rename', { location: chosen[0], name }); refresh(); closeMenu(); }} />) },
+      { label: 'Move to other panel', keepOpen: true, run: closeMenu => transfer('move', chosen, active, closeMenu), disabled: readOnly || !chosen.length || !dest || targetReadOnly },
+      { label: 'Create archive…', disabled: readOnly || !chosen.length || !folder, keepOpen: true, run: closeMenu => openDialog(<PackDialog count={chosen.length} existing={jobs} initialName={chosen.length === 1 ? current?.name || 'Archive' : 'Archive'} folders={[{ data: folder!, label: 'Current panel' }, ...(!targetReadOnly && dest && dest !== folder ? [{ data: dest, label: 'Other panel' }] : [])]} submit={async (destination, options, mode) => {
+        (await api<Job[]>('submit_transfer', { action: 'pack', sources: chosen, destination, options, mode })).forEach(trackJob); closeMenu();
+      }} />) },
+      { label: 'Extract whole archive…', disabled: readOnly || targetReadOnly || !current || !isArchive(current.name) || chosen.length !== 1 || !dest, keepOpen: true, run: closeMenu => openDialog(<CopyDialog action="extract" count={1} destination={displayPath(dest!)} existing={jobs} submit={async (mode, parallel) => {
+        (await api<Job[]>('submit_transfer', { action: 'extract', sources: chosen, destination: dest, mode, parallel_limit: parallel })).forEach(trackJob); closeMenu();
+      }} />) },
+      { label: 'Rename', disabled: readOnly || chosen.length !== 1, keepOpen: true, run: closeMenu => openDialog(<TextDialog title="Rename" initial={current?.name} submit={async name => { await api('rename', { location: chosen[0], name }); refresh(); closeMenu(); }} />) },
       { label: 'Edit file', disabled: readOnly || chosen.length !== 1 || !current || current.directory || current.link, keepOpen: true, run: () => openDialog(<Editor location={chosen[0]} saved={refresh} />) },
       { label: 'Add to Steam…', disabled: readOnly || chosen.length !== 1 || !current || !canAddToSteam(current), keepOpen: true, run: () => openDialog(<AddToSteamDialog location={chosen[0]} />) },
-      { label: chosen[0]?.startsWith('smb://') ? 'Delete permanently…' : 'Move to Trash…', disabled: readOnly || !chosen.length || running, keepOpen: true, run: closeMenu => openDialog(<ConfirmDialog title={chosen[0]?.startsWith('smb://') ? 'Permanently delete?' : 'Move to Trash?'} description={`${chosen.length} item(s):\n${chosen.slice(0, 5).map(p => p.startsWith('smb://') ? decodeURIComponent(p.split('/').pop() || p) : p.split('/').pop()).join('\n')}${chosen.length > 5 ? '\n…' : ''}\n\n${chosen[0]?.startsWith('smb://') ? 'This cannot be undone.' : 'Restore from Trash in Desktop Mode. If Trash is unavailable, the operation stops.'}`} action={chosen[0]?.startsWith('smb://') ? 'Delete permanently' : 'Move to Trash'} submit={() => finish(start(chosen[0]?.startsWith('smb://') ? 'delete' : 'trash', chosen), closeMenu)} />) },
+      { label: chosen[0]?.startsWith('smb://') ? 'Delete permanently…' : 'Move to Trash…', disabled: readOnly || !chosen.length, keepOpen: true, run: closeMenu => openDialog(<ConfirmDialog title={chosen[0]?.startsWith('smb://') ? 'Permanently delete?' : 'Move to Trash?'} description={`${chosen.length} item(s):\n${chosen.slice(0, 5).map(p => p.startsWith('smb://') ? decodeURIComponent(p.split('/').pop() || p) : p.split('/').pop()).join('\n')}${chosen.length > 5 ? '\n…' : ''}\n\n${chosen[0]?.startsWith('smb://') ? 'This cannot be undone.' : 'Restore from Trash in Desktop Mode. If Trash is unavailable, the operation stops.'}`} action={chosen[0]?.startsWith('smb://') ? 'Delete permanently' : 'Move to Trash'} submit={() => finish(start(chosen[0]?.startsWith('smb://') ? 'delete' : 'trash', chosen), closeMenu)} />) },
     ] }, { title: 'Current folder / FileExplorer', actions: [
-      { label: 'New folder', disabled: readOnly || !folder || running, keepOpen: true, run: closeMenu => openDialog(<TextDialog title="New folder" submit={async name => { await api('mkdir', { location: folder, name }); refresh(); closeMenu(); }} />) },
+      { label: 'New folder', disabled: readOnly || !folder, keepOpen: true, run: closeMenu => openDialog(<TextDialog title="New folder" submit={async name => { await api('mkdir', { location: folder, name }); refresh(); closeMenu(); }} />) },
       { label: panes[active].selected.size ? 'Clear selection' : 'Select all', run: () => patch(active, { selected: panes[active].selected.size ? new Set() : new Set(panes[active].data?.entries.map(e => e.path)) }) },
       { label: 'Locations / network shares', keepOpen: true, run: closeMenu => void locations(closeMenu) },
       { label: 'Sort by…', keepOpen: true, run: closeMenu => sortFiles(closeMenu) },
       { label: 'Transfers / queue…', keepOpen: true, run: () => openDialog(<TransfersDialog cancel={cancelCopy} />) },
       { label: 'Interrupted copies…', keepOpen: true, run: () => void interruptedCopies() },
-      { label: 'Empty Trash…', disabled: running, keepOpen: true, run: closeMenu => openDialog(<EmptyTrashDialog submit={() => finish(start('empty_trash', []), closeMenu)} />) },
+      { label: 'Empty Trash…', keepOpen: true, run: closeMenu => openDialog(<EmptyTrashDialog submit={() => finish(start('empty_trash', []), closeMenu)} />) },
       { label: 'Refresh', run: refresh },
       { label: 'Close FileExplorer', run: () => closeModal?.() },
     ] }]} />);
@@ -342,7 +348,6 @@ export function Explorer({ closeModal, openSettings, initialPath }: { closeModal
     const kind = openKind(entry);
     if (!kind) return;
     if (entry.directory) { await load(index, entry.path); return; }
-    setBusyAction(true);
     try {
       if (kind === 'image') { openDialog(<ImageViewer entries={panes[index].data?.entries || [entry]} selected={entry.path} folder={displayPath(panes[index].data?.path || '')} />); return; }
       if (kind === 'media') { openDialog(<MediaPlayer entries={panes[index].data?.entries || [entry]} selected={entry.path} />); return; }
@@ -350,7 +355,7 @@ export function Explorer({ closeModal, openSettings, initialPath }: { closeModal
       if (!entry.path.startsWith('archive://')) { openDialog(<Editor location={entry.path} saved={refresh} />); return; }
       const preview = await api<{ text: string | null; message: string }>('preview', { location: entry.path }); openDialog(<PreviewDialog name={entry.name} text={preview.text ?? preview.message} />);
     }
-    catch (e) { setError(message(e)); } finally { setBusyAction(false); }
+    catch (e) { setError(message(e)); }
   }
   const keydown = (e: GamepadEvent) => {
     if (e.detail.button === GamepadButton.BUMPER_LEFT) { consume(e); focusPane(0, true); }
@@ -371,7 +376,8 @@ export function Explorer({ closeModal, openSettings, initialPath }: { closeModal
         <div className="fe-path"><div className="fe-path-title">{index ? 'Right' : 'Left'} panel {active === index ? ' • active' : ''}</div><div className="fe-path-value" title={displayPath(pane.data?.path || '')}>{displayPath(pane.data?.path || 'Loading…')}</div></div>
         <div className="fe-columns"><span className="fe-column-name">Name{state?.settings.sort_by === 'name' ? ' ↑' : ''}</span><span className="fe-size">Size{state?.settings.sort_by === 'size' ? ' ↓' : ''}</span><span className="fe-modified">Modified{state?.settings.sort_by === 'modified' ? ' ↓' : ''}</span></div>
         <Focusable className="fe-list" flow-children="column" onGamepadDirection={wrapFiles} onGamepadFocus={() => { if (!restoringFocus.current) { region.current = 'files'; setToolbarFocused(false); setTransfersFocused(false); setActive(index); } }}>
-          {pane.loading && !pane.data ? <div className="fe-muted">Loading…</div> : <>
+          {pane.loading && <div className="fe-muted" role="status">{pane.loadingPath.startsWith('archive://') ? 'Reading archive… Network archives may take longer to open.' : 'Loading…'}</div>}
+          {(!pane.loading || pane.data) && <>
             <Focusable noFocusRing className={`fe-row ${active === index && pane.focused === '..' ? 'focused' : ''}`} preferredFocus={index === 0} data-current={pane.focused === '..'}
               onGamepadFocus={e => { patch(index, { focused: '..' }); setActive(index); (e.target as HTMLElement).scrollIntoView?.({ block: 'nearest' }); }}
               onActivate={e => { consume(e); if (pane.data && !pane.loading) void load(index, pane.data.parent); }} onClick={() => { setActive(index); if (pane.data && !pane.loading) void load(index, pane.data.parent); }}>

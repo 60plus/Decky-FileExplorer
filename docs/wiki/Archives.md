@@ -50,6 +50,11 @@ uncompressed payload is shown as a single file named `data`.
 The panel marks the location **Archive • read-only**. Browsing does not modify the
 archive. Rename, delete, editing and copying into an archive are unavailable.
 
+You can browse archives while a transfer is running. A remote archive may need
+to download before its contents appear; **Reading archive** shows that the
+request is in progress. Completing another transfer does not cancel that request.
+Packing and extraction can also run alongside unrelated transfers or join the queue.
+
 | SteamOS PC | SteamOS handheld |
 | --- | --- |
 | [![Archive browsing on PC](../../images/screenshots/pc-archive-browsing-a8dd18da7330.png)](../../images/screenshots/pc-archive-browsing-a8dd18da7330.png) | [![Archive browsing on handheld](../../images/screenshots/handheld-archive-browsing-fa56fd9ee809.png)](../../images/screenshots/handheld-archive-browsing-fa56fd9ee809.png) |
